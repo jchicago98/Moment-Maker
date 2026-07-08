@@ -1,20 +1,41 @@
-import * as Haptics from 'expo-haptics';
 import { Redirect, useRouter } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, useReducedMotion } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BrewMeter } from '@/components/BrewMeter';
-import { IdeaCard } from '@/components/IdeaCard';
+import { DraggableIdeaCard } from '@/components/DraggableIdeaCard';
 import { VsBadge } from '@/components/VsBadge';
+import { playDealIn, playThrowLock } from '@/lib/audio/soundEngine';
 import { daypartWord } from '@/lib/daypart';
+import { hapticThrow } from '@/lib/haptics';
 import { useSession } from '@/lib/store/session';
 import { borders, candyOrder, canvas, cardTilt, ink } from '@/lib/theme';
 import type { Idea } from '@/lib/types';
 
+// How long the losing card's fade and the winner's flight get to breathe
+// before the next pair deals in.
+const RESOLVE_MS = 300;
+
 export default function PickerScreen() {
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
   const { pairs, round, pick, surpriseMe } = useSession();
+  const [pendingWinner, setPendingWinner] = useState<Idea | null>(null);
+  const resolveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const resolving = pendingWinner !== null;
+
+  useEffect(() => {
+    if (pairs.length > 0 && round < pairs.length) playDealIn();
+  }, [round, pairs.length]);
+
+  useEffect(() => {
+    return () => {
+      if (resolveTimer.current) clearTimeout(resolveTimer.current);
+    };
+  }, []);
 
   if (pairs.length === 0) {
     return <Redirect href="/" />;
@@ -26,18 +47,35 @@ export default function PickerScreen() {
   const colorA = candyOrder[round % candyOrder.length];
   const colorB = candyOrder[(round + 2) % candyOrder.length];
 
-  const handlePick = (winner: Idea, loser: Idea) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  const handlePick = (winner: Idea, loser: Idea, throwVelocity: number) => {
+    if (resolving) return;
+    setPendingWinner(winner);
     const isLast = round + 1 >= pairs.length;
-    pick(winner, loser);
-    if (isLast) router.replace('/reveal');
+    resolveTimer.current = setTimeout(() => {
+      pick(winner, loser, throwVelocity);
+      if (isLast) {
+        router.replace('/reveal');
+      } else {
+        setPendingWinner(null);
+      }
+    }, RESOLVE_MS);
   };
 
   const handleSurprise = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (resolving) return;
+    playThrowLock(0.5);
+    hapticThrow(0.5);
     surpriseMe();
     router.replace('/reveal');
   };
+
+  const resolutionFor = (idea: Idea) => {
+    if (!pendingWinner) return null;
+    return pendingWinner.id === idea.id ? 'winner' : 'loser';
+  };
+
+  const dealIn = reduceMotion ? FadeIn : FadeInDown.springify().damping(14);
+  const dealInDelayed = reduceMotion ? FadeIn : FadeInDown.delay(120).springify().damping(14);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -57,27 +95,39 @@ export default function PickerScreen() {
         </Pressable>
       </View>
 
-      <Text style={styles.prompt}>Tap the one that sparks joy</Text>
+      <Text style={styles.prompt}>
+        {reduceMotion ? 'Tap the one that sparks joy' : 'Throw one to pick!'}
+      </Text>
 
       <View style={styles.arena}>
-        <Animated.View
-          key={`${round}-a`}
-          entering={FadeInDown.springify().damping(14)}
-          style={styles.cardA}
-        >
-          <IdeaCard idea={ideaA} color={colorA} tilt={-cardTilt} onPick={() => handlePick(ideaA, ideaB)} />
+        <Animated.View key={`${round}-a`} entering={dealIn} style={styles.cardA}>
+          <DraggableIdeaCard
+            idea={ideaA}
+            color={colorA}
+            tilt={-cardTilt}
+            side="top"
+            resolution={resolutionFor(ideaA)}
+            dragEnabled={!resolving && !reduceMotion}
+            reduceMotion={reduceMotion}
+            onPick={(velocity) => handlePick(ideaA, ideaB, velocity)}
+          />
         </Animated.View>
 
         <View style={styles.vsWrap}>
           <VsBadge />
         </View>
 
-        <Animated.View
-          key={`${round}-b`}
-          entering={FadeInDown.delay(120).springify().damping(14)}
-          style={styles.cardB}
-        >
-          <IdeaCard idea={ideaB} color={colorB} tilt={cardTilt} onPick={() => handlePick(ideaB, ideaA)} />
+        <Animated.View key={`${round}-b`} entering={dealInDelayed} style={styles.cardB}>
+          <DraggableIdeaCard
+            idea={ideaB}
+            color={colorB}
+            tilt={cardTilt}
+            side="bottom"
+            resolution={resolutionFor(ideaB)}
+            dragEnabled={!resolving && !reduceMotion}
+            reduceMotion={reduceMotion}
+            onPick={(velocity) => handlePick(ideaB, ideaA, velocity)}
+          />
         </Animated.View>
       </View>
 

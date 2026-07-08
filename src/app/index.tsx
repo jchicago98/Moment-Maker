@@ -1,11 +1,12 @@
 import { useRouter } from 'expo-router';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BigButton } from '@/components/BigButton';
 import { Chip } from '@/components/Chip';
 import { useSession } from '@/lib/store/session';
-import { ink } from '@/lib/theme';
+import { useSettings } from '@/lib/store/settings';
+import { borders, ink } from '@/lib/theme';
 import type { CostTier, GroupType } from '@/lib/types';
 
 const groups: { value: GroupType; label: string }[] = [
@@ -33,6 +34,7 @@ const budgets: { value: CostTier; label: string }[] = [
 export default function HomeScreen() {
   const router = useRouter();
   const { setup, setSetup, startSession } = useSession();
+  const { soundOn, toggleSound } = useSettings();
 
   const dealMeIn = () => {
     if (startSession()) {
@@ -48,7 +50,17 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Moment maker</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>Moment maker</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={soundOn ? 'Mute sound' : 'Unmute sound'}
+            onPress={toggleSound}
+            style={({ pressed }) => [styles.soundToggle, pressed && { transform: [{ scale: 0.94 }] }]}
+          >
+            <Text style={styles.soundIcon}>{soundOn ? '🔊' : '🔇'}</Text>
+          </Pressable>
+        </View>
         <Text style={styles.tagline}>{'"What should we do today?" — solved.'}</Text>
 
         <View style={styles.section}>
@@ -109,11 +121,29 @@ const styles = StyleSheet.create({
     padding: 24,
     gap: 24,
   },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginTop: 12,
+  },
   title: {
     fontSize: 36,
     fontWeight: '900',
     color: ink,
-    marginTop: 12,
+    flexShrink: 1,
+  },
+  soundToggle: {
+    borderWidth: borders.width,
+    borderColor: ink,
+    borderRadius: 999,
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  soundIcon: {
+    fontSize: 20,
   },
   tagline: {
     fontSize: 16,

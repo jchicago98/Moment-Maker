@@ -1,12 +1,13 @@
-import * as Haptics from 'expo-haptics';
 import { Redirect, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
+  FadeIn,
   FadeInUp,
   runOnJS,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withRepeat,
   withSequence,
@@ -15,7 +16,10 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BigButton } from '@/components/BigButton';
+import { ConfettiBurst } from '@/components/ConfettiBurst';
+import { playGiftKnock, playRevealMelody } from '@/lib/audio/soundEngine';
 import { daypartWord } from '@/lib/daypart';
+import { hapticReveal } from '@/lib/haptics';
 import { iconEmoji } from '@/lib/icons';
 import { useSession } from '@/lib/store/session';
 import { borders, candyOrder, canvas, ink } from '@/lib/theme';
@@ -29,6 +33,7 @@ function totalLabel(totalMin: number, costTier: number): string {
 
 export default function RevealScreen() {
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
   const { plan, reset } = useSession();
   const [opened, setOpened] = useState(false);
 
@@ -38,60 +43,83 @@ export default function RevealScreen() {
 
   const daypart = daypartWord();
 
+  const handleOpened = () => {
+    setOpened(true);
+    hapticReveal();
+    playRevealMelody();
+  };
+
   const startMoment = () => {
     reset();
     router.replace('/');
   };
 
+  const cardEnter = (delayMs: number) =>
+    reduceMotion ? FadeIn.delay(delayMs) : FadeInUp.delay(delayMs).springify().damping(14);
+
   return (
     <SafeAreaView style={styles.safe}>
       {opened ? (
-        <ScrollView contentContainerStyle={styles.planContainer}>
-          <Animated.Text entering={FadeInUp.springify()} style={styles.planTitle}>
-            {plan.title} ✨
-          </Animated.Text>
+        <>
+          <ScrollView contentContainerStyle={styles.planContainer}>
+            <Animated.Text entering={cardEnter(0)} style={styles.planTitle}>
+              {plan.title} ✨
+            </Animated.Text>
 
-          {plan.steps.map((step, i) => {
-            const color = candyOrder[i % candyOrder.length];
-            return (
-              <Animated.View
-                key={`${step.title}-${i}`}
-                entering={FadeInUp.delay(250 + i * 200).springify().damping(14)}
-                style={[styles.stepCard, { backgroundColor: color.fill, borderColor: color.border }]}
-              >
-                <Text style={styles.stepTime}>{step.time}</Text>
-                <View style={styles.stepBody}>
-                  <Text style={styles.stepIcon}>{iconEmoji(step.icon)}</Text>
-                  <View style={styles.stepTextWrap}>
-                    <Text style={[styles.stepTitle, { color: color.text }]}>{step.title}</Text>
-                    <Text style={[styles.stepTip, { color: color.text }]}>{step.tip}</Text>
+            {plan.steps.map((step, i) => {
+              const color = candyOrder[i % candyOrder.length];
+              return (
+                <Animated.View
+                  key={`${step.title}-${i}`}
+                  entering={cardEnter(250 + i * 200)}
+                  style={[styles.stepCard, { backgroundColor: color.fill, borderColor: color.border }]}
+                >
+                  <Text style={styles.stepTime}>{step.time}</Text>
+                  <View style={styles.stepBody}>
+                    <Text style={styles.stepIcon}>{iconEmoji(step.icon)}</Text>
+                    <View style={styles.stepTextWrap}>
+                      <Text style={[styles.stepTitle, { color: color.text }]}>{step.title}</Text>
+                      <Text style={[styles.stepTip, { color: color.text }]}>{step.tip}</Text>
+                    </View>
                   </View>
-                </View>
-              </Animated.View>
-            );
-          })}
+                </Animated.View>
+              );
+            })}
 
-          <Animated.View
-            entering={FadeInUp.delay(250 + plan.steps.length * 200 + 150).springify()}
-            style={styles.planFooter}
-          >
-            <Text style={styles.totalText}>{totalLabel(plan.totalMin, plan.costTier)}</Text>
-            <BigButton label={`Start my ${daypart}`} onPress={startMoment} />
-          </Animated.View>
-        </ScrollView>
+            <Animated.View
+              entering={cardEnter(250 + plan.steps.length * 200 + 150)}
+              style={styles.planFooter}
+            >
+              <Text style={styles.totalText}>{totalLabel(plan.totalMin, plan.costTier)}</Text>
+              <BigButton label={`Start my ${daypart}`} onPress={startMoment} />
+            </Animated.View>
+          </ScrollView>
+          {!reduceMotion && <ConfettiBurst />}
+        </>
       ) : (
-        <GiftBox daypart={daypart} onOpened={() => setOpened(true)} />
+        <GiftBox daypart={daypart} reduceMotion={reduceMotion} onOpened={handleOpened} />
       )}
     </SafeAreaView>
   );
 }
 
-function GiftBox({ daypart, onOpened }: { daypart: string; onOpened: () => void }) {
+interface GiftBoxProps {
+  daypart: string;
+  reduceMotion: boolean;
+  onOpened: () => void;
+}
+
+function GiftBox({ daypart, reduceMotion, onOpened }: GiftBoxProps) {
+  // Shared-value choreography in the press handler — opt out of the compiler.
+  'use no memo';
   const breathe = useSharedValue(1);
   const shake = useSharedValue(0);
-  const [shaking, setShaking] = useState(false);
+  const pop = useSharedValue(1);
+  const fade = useSharedValue(1);
+  const [opening, setOpening] = useState(false);
 
   useEffect(() => {
+    if (reduceMotion) return;
     breathe.value = withRepeat(
       withSequence(
         withTiming(1.06, { duration: 1100, easing: Easing.inOut(Easing.quad) }),
@@ -99,17 +127,28 @@ function GiftBox({ daypart, onOpened }: { daypart: string; onOpened: () => void 
       ),
       -1
     );
-  }, [breathe]);
+  }, [breathe, reduceMotion]);
 
   const giftStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: breathe.value }, { rotate: `${shake.value}deg` }],
+    opacity: fade.value,
+    transform: [
+      { scale: breathe.value * pop.value },
+      { rotate: `${shake.value}deg` },
+    ],
   }));
 
   const open = () => {
-    if (shaking) return;
-    setShaking(true);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    // Quick 0.4s eager shake — short on purpose; a long shake deflates anticipation.
+    if (opening) return;
+    setOpening(true);
+    playGiftKnock(); // 3–4 woodblock knocks — the gift knocking from inside
+
+    if (reduceMotion) {
+      onOpened();
+      return;
+    }
+
+    // Quick 0.4s eager shake — short on purpose; a long shake deflates
+    // anticipation. Then the lid pops and the box scales away.
     const tick = 50;
     shake.value = withSequence(
       withTiming(-7, { duration: tick }),
@@ -118,9 +157,18 @@ function GiftBox({ daypart, onOpened }: { daypart: string; onOpened: () => void 
       withTiming(7, { duration: tick }),
       withTiming(-5, { duration: tick }),
       withTiming(5, { duration: tick }),
-      withTiming(0, { duration: tick * 2 }, (finished) => {
+      withTiming(0, { duration: tick * 2 })
+    );
+    pop.value = withSequence(
+      withTiming(1, { duration: tick * 8 }),
+      withTiming(1.25, { duration: 120, easing: Easing.out(Easing.quad) }),
+      withTiming(0, { duration: 200, easing: Easing.in(Easing.quad) }, (finished) => {
         if (finished) runOnJS(onOpened)();
       })
+    );
+    fade.value = withSequence(
+      withTiming(1, { duration: tick * 8 + 120 }),
+      withTiming(0, { duration: 200 })
     );
   };
 
