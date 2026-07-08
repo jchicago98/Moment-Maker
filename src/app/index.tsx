@@ -1,13 +1,16 @@
-import { useRouter } from 'expo-router';
+import { Redirect, useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BigButton } from '@/components/BigButton';
 import { Chip } from '@/components/Chip';
+import { getLatestUnratedPlan, hasProfile } from '@/lib/db/database';
+import { hapticReveal } from '@/lib/haptics';
 import { useSession } from '@/lib/store/session';
 import { useSettings } from '@/lib/store/settings';
-import { borders, ink } from '@/lib/theme';
-import type { CostTier, GroupType } from '@/lib/types';
+import { borders, candy, ink } from '@/lib/theme';
+import type { CostTier, GroupType, Plan } from '@/lib/types';
 
 const groups: { value: GroupType; label: string }[] = [
   { value: 'solo', label: 'Just me' },
@@ -33,8 +36,30 @@ const budgets: { value: CostTier; label: string }[] = [
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { setup, setSetup, startSession } = useSession();
+  const { setup, setSetup, startSession, rateLastPlan } = useSession();
   const { soundOn, toggleSound } = useSettings();
+  const [unratedPlan, setUnratedPlan] = useState<Plan | null>(null);
+  const [justRated, setJustRated] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      setUnratedPlan(getLatestUnratedPlan());
+      setJustRated(false);
+    }, [])
+  );
+
+  // First launch: the onboarding quiz seeds the profile (its presence in the
+  // DB doubles as the onboarded flag). Synchronous SQLite read — no flicker.
+  if (!hasProfile()) {
+    return <Redirect href="/onboarding" />;
+  }
+
+  const rate = (stars: 1 | 2 | 3 | 4 | 5) => {
+    if (!unratedPlan) return;
+    rateLastPlan(unratedPlan.id, stars); // ratings are the strongest signal (§7.1)
+    hapticReveal();
+    setJustRated(true);
+  };
 
   const dealMeIn = () => {
     if (startSession()) {
@@ -62,6 +87,32 @@ export default function HomeScreen() {
           </Pressable>
         </View>
         <Text style={styles.tagline}>{'"What should we do today?" — solved.'}</Text>
+
+        {unratedPlan && (
+          <View style={styles.ratingCard}>
+            {justRated ? (
+              <Text style={styles.ratingTitle}>Noted! Your next plan just got smarter ✨</Text>
+            ) : (
+              <>
+                <Text style={styles.ratingTitle}>How was it?</Text>
+                <Text style={styles.ratingSubtitle}>{unratedPlan.title}</Text>
+                <View style={styles.starRow}>
+                  {([1, 2, 3, 4, 5] as const).map((stars) => (
+                    <Pressable
+                      key={stars}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Rate ${stars} star${stars > 1 ? 's' : ''}`}
+                      onPress={() => rate(stars)}
+                      style={({ pressed }) => [styles.star, pressed && { transform: [{ scale: 1.2 }] }]}
+                    >
+                      <Text style={styles.starText}>⭐</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </>
+            )}
+          </View>
+        )}
 
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>{"Who's playing?"}</Text>
@@ -150,6 +201,38 @@ const styles = StyleSheet.create({
     color: ink,
     opacity: 0.7,
     marginTop: -14,
+  },
+  ratingCard: {
+    borderWidth: borders.width,
+    borderColor: candy.purple.border,
+    backgroundColor: candy.purple.fill,
+    borderRadius: borders.radius,
+    padding: 16,
+    gap: 6,
+  },
+  ratingTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: candy.purple.text,
+  },
+  ratingSubtitle: {
+    fontSize: 14,
+    color: candy.purple.text,
+    opacity: 0.8,
+  },
+  starRow: {
+    flexDirection: 'row',
+    gap: 4,
+    marginTop: 4,
+  },
+  star: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  starText: {
+    fontSize: 26,
   },
   section: {
     gap: 12,

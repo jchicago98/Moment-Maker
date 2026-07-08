@@ -21,15 +21,15 @@ const RESOLVE_MS = 300;
 export default function PickerScreen() {
   const router = useRouter();
   const reduceMotion = useReducedMotion();
-  const { pairs, round, pick, surpriseMe } = useSession();
+  const { currentPair, round, totalRounds, pick, surpriseMe } = useSession();
   const [pendingWinner, setPendingWinner] = useState<Idea | null>(null);
   const resolveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resolving = pendingWinner !== null;
 
   useEffect(() => {
-    if (pairs.length > 0 && round < pairs.length) playDealIn();
-  }, [round, pairs.length]);
+    if (currentPair) playDealIn();
+  }, [round, currentPair]);
 
   useEffect(() => {
     return () => {
@@ -37,23 +37,22 @@ export default function PickerScreen() {
     };
   }, []);
 
-  if (pairs.length === 0) {
+  if (!currentPair) {
     return <Redirect href="/" />;
   }
 
-  // Round can briefly equal pairs.length after the final pick, before navigation.
-  const pair = pairs[Math.min(round, pairs.length - 1)];
-  const [ideaA, ideaB] = pair;
+  const [ideaA, ideaB] = currentPair;
   const colorA = candyOrder[round % candyOrder.length];
   const colorB = candyOrder[(round + 2) % candyOrder.length];
 
   const handlePick = (winner: Idea, loser: Idea, throwVelocity: number) => {
     if (resolving) return;
     setPendingWinner(winner);
-    const isLast = round + 1 >= pairs.length;
     resolveTimer.current = setTimeout(() => {
+      // Synchronous: logs the event, updates the profile, computes the next
+      // most informative pair (or assembles the plan after round 5).
       pick(winner, loser, throwVelocity);
-      if (isLast) {
+      if (useSession.getState().plan) {
         router.replace('/reveal');
       } else {
         setPendingWinner(null);
@@ -82,7 +81,7 @@ export default function PickerScreen() {
       <View style={styles.header}>
         <View style={styles.roundBadge}>
           <Text style={styles.roundText}>
-            {Math.min(round + 1, pairs.length)} / {pairs.length}
+            {Math.min(round + 1, totalRounds)} / {totalRounds}
           </Text>
         </View>
         <Pressable
@@ -132,7 +131,7 @@ export default function PickerScreen() {
       </View>
 
       <View style={styles.footer}>
-        <BrewMeter progress={round / pairs.length} daypart={daypartWord()} />
+        <BrewMeter progress={round / totalRounds} daypart={daypartWord()} />
       </View>
     </SafeAreaView>
   );

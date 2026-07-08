@@ -1,15 +1,39 @@
 import { create } from 'zustand';
 
-import { getIdeasForSession, logPickEvent } from '@/lib/db/database';
-import type { Idea, Plan, PlanStep, SessionSetup } from '@/lib/types';
+import { assemblePlan } from '@/lib/algorithm/assembly';
+import {
+  applyPickUpdate,
+  applyRatingUpdate,
+  applySessionDecay,
+  createEmptyProfile,
+  velocityFactor,
+} from '@/lib/algorithm/learning';
+import { pickPair } from '@/lib/algorithm/pairing';
+import { hardFilter, scoreIdea, type SessionContext } from '@/lib/algorithm/scoring';
+import {
+  getAllIdeas,
+  getIdeasByIds,
+  getPlanById,
+  getProfile,
+  getStatsFor,
+  logExperience,
+  logPickEvent,
+  recordChosen,
+  recordShown,
+  saveProfile,
+  savePlan,
+} from '@/lib/db/database';
+import { daypartWord } from '@/lib/daypart';
+import type { Idea, Plan, SessionSetup, TimeOfDay, UserProfile } from '@/lib/types';
 
 export const MAX_ROUNDS = 5; // never more — decision fatigue
 
 interface SessionState {
   sessionId: string | null;
   setup: SessionSetup;
-  pairs: [Idea, Idea][];
-  round: number; // 0-based index into pairs
+  round: number; // 0-based, count of completed picks
+  totalRounds: number;
+  currentPair: [Idea, Idea] | null;
   winners: Idea[];
   plan: Plan | null;
 
@@ -17,86 +41,63 @@ interface SessionState {
   startSession: () => boolean; // false if not enough ideas to build pairs
   pick: (winner: Idea, loser: Idea, throwVelocity?: number) => void;
   surpriseMe: () => void;
+  rateLastPlan: (planId: string, rating: 1 | 2 | 3 | 4 | 5) => void;
   reset: () => void;
 }
 
-function shuffle<T>(items: T[]): T[] {
-  const arr = [...items];
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
+// Session-scoped working data the UI never reads — kept out of the store to
+// avoid re-renders on internals.
+interface SessionInternals {
+  profile: UserProfile;
+  pool: Idea[];
+  scores: Map<string, number>;
+  timesShown: Map<string, number>;
+  usedIds: Set<string>;
 }
 
-/**
- * M1 pairing: random pairs from the hard-filtered deck.
- * Informative pairing (soft decision tree) arrives with the algorithm in M3.
- */
-function buildPairs(ideas: Idea[]): [Idea, Idea][] {
-  const shuffled = shuffle(ideas);
-  const pairs: [Idea, Idea][] = [];
-  for (let i = 0; i + 1 < shuffled.length && pairs.length < MAX_ROUNDS; i += 2) {
-    pairs.push([shuffled[i], shuffled[i + 1]]);
-  }
-  return pairs;
-}
+let internals: SessionInternals | null = null;
 
-/**
- * M1 plan assembly: a simple 2–3 step plan drawn from the session's winners
- * so the reveal already visibly reflects the picks. Real scoring-based
- * assembly arrives in M3.
- */
-function assemblePlan(winners: Idea[], setup: SessionSetup): Plan {
-  const chosen: Idea[] = [];
-  let remaining = setup.timeBudgetMin;
-  for (const idea of winners) {
-    if (chosen.length >= 3) break;
-    if (idea.durationMin <= remaining) {
-      chosen.push(idea);
-      remaining -= idea.durationMin;
-    }
-  }
-  if (chosen.length === 0 && winners.length > 0) chosen.push(winners[0]);
-
-  const start = new Date();
-  start.setMinutes(start.getMinutes() + 30 - (start.getMinutes() % 30)); // next half hour
-  let cursor = new Date(start);
-
-  const steps: PlanStep[] = chosen.map((idea) => {
-    const time = cursor.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-    cursor = new Date(cursor.getTime() + idea.durationMin * 60_000);
-    return {
-      time,
-      icon: idea.icon,
-      title: idea.title,
-      tip: idea.description,
-      durationMin: idea.durationMin,
-    };
-  });
-
-  const totalMin = steps.reduce((sum, s) => sum + s.durationMin, 0);
-  const costTier = chosen.reduce<number>(
-    (max, i) => Math.max(max, i.costTier),
-    0
-  ) as Plan['costTier'];
-
+function contextFor(setup: SessionSetup): SessionContext {
   return {
-    id: `plan-${Date.now()}`,
-    title: planTitle(setup),
-    steps,
-    totalMin,
-    costTier,
-    createdAt: new Date().toISOString(),
+    group: setup.group,
+    timeBudgetMin: setup.timeBudgetMin,
+    costCap: setup.costCap,
+    timeOfDay: daypartWord() as TimeOfDay,
+    weather: 'unknown', // live forecasts arrive in M4
   };
 }
 
-function planTitle(setup: SessionSetup): string {
-  const hour = new Date().getHours();
-  const daypart = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
-  const who =
-    setup.group === 'solo' ? 'Your' : setup.group === 'couple' ? 'Your' : `Your ${setup.group}`;
-  return `${who} ${daypart}`;
+function rescore(ints: SessionInternals): void {
+  const stats = getStatsFor(ints.pool.map((i) => i.id));
+  ints.scores = new Map(
+    ints.pool.map((idea) => [
+      idea.id,
+      scoreIdea(ints.profile, idea, {
+        stats: stats.get(idea.id),
+        currentSession: ints.profile.totalSessions,
+        rng: Math.random,
+      }),
+    ])
+  );
+  ints.timesShown = new Map(
+    ints.pool.map((idea) => [idea.id, stats.get(idea.id)?.timesShown ?? 0])
+  );
+}
+
+function nextPair(ints: SessionInternals, round: number): [Idea, Idea] | null {
+  const available = ints.pool.filter((i) => !ints.usedIds.has(i.id));
+  const pair = pickPair(available, ints.profile, {
+    roundIndex: round,
+    totalRounds: MAX_ROUNDS,
+    scores: ints.scores,
+    timesShown: ints.timesShown,
+  });
+  if (pair) {
+    ints.usedIds.add(pair[0].id);
+    ints.usedIds.add(pair[1].id);
+    recordShown([pair[0].id, pair[1].id], ints.profile.totalSessions);
+  }
+  return pair;
 }
 
 const defaultSetup: SessionSetup = {
@@ -108,8 +109,9 @@ const defaultSetup: SessionSetup = {
 export const useSession = create<SessionState>((set, get) => ({
   sessionId: null,
   setup: defaultSetup,
-  pairs: [],
   round: 0,
+  totalRounds: MAX_ROUNDS,
+  currentPair: null,
   winners: [],
   plan: null,
 
@@ -117,13 +119,40 @@ export const useSession = create<SessionState>((set, get) => ({
 
   startSession: () => {
     const { setup } = get();
-    const deck = getIdeasForSession(setup);
-    const pairs = buildPairs(deck);
-    if (pairs.length === 0) return false;
+
+    // Light decay per session so the profile tracks who the user is now.
+    let profile = getProfile() ?? createEmptyProfile();
+    profile = applySessionDecay(profile);
+    profile.totalSessions += 1;
+    saveProfile(profile);
+
+    let pool = hardFilter(getAllIdeas(), contextFor(setup));
+    if (pool.length < 2) {
+      // Relax the time-of-day constraint before giving up — never block a session.
+      pool = getAllIdeas().filter(
+        (i) =>
+          i.durationMin <= setup.timeBudgetMin &&
+          i.costTier <= setup.costCap &&
+          i.groupFit.includes(setup.group)
+      );
+    }
+    if (pool.length < 2) return false;
+
+    internals = {
+      profile,
+      pool,
+      scores: new Map(),
+      timesShown: new Map(),
+      usedIds: new Set(),
+    };
+    rescore(internals);
+    const pair = nextPair(internals, 0);
+    if (!pair) return false;
+
     set({
       sessionId: `session-${Date.now()}`,
-      pairs,
       round: 0,
+      currentPair: pair,
       winners: [],
       plan: null,
     });
@@ -131,8 +160,8 @@ export const useSession = create<SessionState>((set, get) => ({
   },
 
   pick: (winner, loser, throwVelocity = 0) => {
-    const { sessionId, round, pairs, winners, setup } = get();
-    if (!sessionId) return;
+    const { sessionId, round, winners, setup } = get();
+    if (!sessionId || !internals) return;
 
     logPickEvent({
       id: `pick-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
@@ -142,26 +171,88 @@ export const useSession = create<SessionState>((set, get) => ({
       throwVelocity,
       timestamp: new Date().toISOString(),
     });
+    recordChosen(winner.id);
+
+    // The algorithm learns on EVERY pick, synchronously — a few
+    // multiplications, never lagging the throw animation (§7.1).
+    internals.profile = applyPickUpdate(internals.profile, winner, loser, {
+      factor: velocityFactor(throwVelocity),
+    });
+    saveProfile(internals.profile);
 
     const nextWinners = [...winners, winner];
-    const isLastRound = round + 1 >= pairs.length;
-    set({
-      winners: nextWinners,
-      round: round + 1,
-      plan: isLastRound ? assemblePlan(nextWinners, setup) : null,
-    });
+    const nextRound = round + 1;
+
+    if (nextRound >= MAX_ROUNDS) {
+      const plan = assemblePlan(nextWinners, internals.profile, setup);
+      savePlan(plan);
+      set({ winners: nextWinners, round: nextRound, currentPair: null, plan });
+      return;
+    }
+
+    // Re-score with the freshly updated profile, then pick the next most
+    // informative pair — the soft decision tree narrowing per round.
+    rescore(internals);
+    const pair = nextPair(internals, nextRound);
+    if (!pair) {
+      const plan = assemblePlan(nextWinners, internals.profile, setup);
+      savePlan(plan);
+      set({ winners: nextWinners, round: nextRound, currentPair: null, plan });
+      return;
+    }
+    set({ winners: nextWinners, round: nextRound, currentPair: pair });
   },
 
   surpriseMe: () => {
-    // Auto-pick the rest of the rounds at random and fast-forward to the reveal.
-    const { pairs, round } = get();
-    for (let i = round; i < pairs.length; i++) {
-      const [a, b] = get().pairs[i];
-      const winner = Math.random() < 0.5 ? a : b;
-      get().pick(winner, winner === a ? b : a, 0);
+    // Auto-pick the rest: the higher-scored side of each remaining pair wins.
+    // No profile updates — these aren't the user's choices; if the surprise
+    // lands, the post-experience rating teaches us instead.
+    const { sessionId, setup } = get();
+    if (!sessionId || !internals) return;
+
+    let { round, winners, currentPair } = get();
+    const picks = [...winners];
+    while (round < MAX_ROUNDS && currentPair) {
+      const [a, b] = currentPair;
+      const scoreOf = (i: Idea) => internals!.scores.get(i.id) ?? 0;
+      const winner = scoreOf(a) >= scoreOf(b) ? a : b;
+      const loser = winner === a ? b : a;
+      logPickEvent({
+        id: `pick-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
+        sessionId,
+        winnerId: winner.id,
+        loserId: loser.id,
+        throwVelocity: 0,
+        timestamp: new Date().toISOString(),
+      });
+      recordChosen(winner.id);
+      picks.push(winner);
+      round += 1;
+      currentPair = round < MAX_ROUNDS ? nextPair(internals, round) : null;
     }
+
+    const plan = assemblePlan(picks, internals.profile, setup);
+    savePlan(plan);
+    set({ winners: picks, round, currentPair: null, plan });
   },
 
-  reset: () =>
-    set({ sessionId: null, pairs: [], round: 0, winners: [], plan: null }),
+  rateLastPlan: (planId, rating) => {
+    const plan = getPlanById(planId);
+    if (!plan) return;
+    const ideas = getIdeasByIds(plan.ideaIds);
+    const profile = getProfile() ?? createEmptyProfile();
+    saveProfile(applyRatingUpdate(profile, ideas, rating));
+    logExperience({
+      id: `exp-${Date.now()}`,
+      planId,
+      rating,
+      completed: true,
+      date: new Date().toISOString(),
+    });
+  },
+
+  reset: () => {
+    internals = null;
+    set({ sessionId: null, round: 0, currentPair: null, winners: [], plan: null });
+  },
 }));

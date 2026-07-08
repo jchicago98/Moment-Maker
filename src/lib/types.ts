@@ -91,6 +91,7 @@ export interface Plan {
   id: string;
   title: string; // e.g. "Your cozy evening"
   steps: PlanStep[];
+  ideaIds: string[]; // the ideas behind the steps — ratings feed back through these
   totalMin: number;
   costTier: CostTier;
   createdAt: string;

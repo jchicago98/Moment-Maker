@@ -1,7 +1,8 @@
 import * as SQLite from 'expo-sqlite';
 
 import seedIdeas from '@/assets/seedIdeas.json';
-import type { Idea, PickEvent, SessionSetup } from '@/lib/types';
+import type { IdeaStats } from '@/lib/algorithm/scoring';
+import type { ExperienceLog, Idea, PickEvent, Plan, UserProfile } from '@/lib/types';
 
 const db = SQLite.openDatabaseSync('momentmaker.db');
 
@@ -85,6 +86,29 @@ export function initDatabase(): void {
       photoUri TEXT,
       date TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS user_profile (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      json TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS idea_stats (
+      ideaId TEXT PRIMARY KEY,
+      timesShown INTEGER NOT NULL DEFAULT 0,
+      timesChosen INTEGER NOT NULL DEFAULT 0,
+      lastShownSession INTEGER
+    );
+
+    CREATE TABLE IF NOT EXISTS plans (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      stepsJson TEXT NOT NULL,
+      ideaIdsJson TEXT NOT NULL,
+      totalMin INTEGER NOT NULL,
+      costTier INTEGER NOT NULL,
+      createdAt TEXT NOT NULL
+    );
   `);
 
   seedIfEmpty();
@@ -132,23 +156,12 @@ export function getAllIdeas(): Idea[] {
   return db.getAllSync<IdeaRow>('SELECT * FROM ideas').map(rowToIdea);
 }
 
-/**
- * M1 hard filter: group fit, time budget, and cost cap.
- * (Weather and time-of-day filtering arrive with the algorithm in M3.)
- */
-export function getIdeasForSession(setup: SessionSetup): Idea[] {
-  const rows = db.getAllSync<IdeaRow>(
-    `SELECT * FROM ideas
-     WHERE durationMin <= $timeBudget
-       AND costTier <= $costCap
-       AND groupFit LIKE $group`,
-    {
-      $timeBudget: setup.timeBudgetMin,
-      $costCap: setup.costCap,
-      $group: `%"${setup.group}"%`,
-    }
-  );
-  return rows.map(rowToIdea);
+export function getIdeasByIds(ids: string[]): Idea[] {
+  if (ids.length === 0) return [];
+  const placeholders = ids.map(() => '?').join(', ');
+  const rows = db.getAllSync<IdeaRow>(`SELECT * FROM ideas WHERE id IN (${placeholders})`, ids);
+  const byId = new Map(rows.map((r) => [r.id, rowToIdea(r)]));
+  return ids.map((id) => byId.get(id)).filter((i): i is Idea => i !== undefined);
 }
 
 export function logPickEvent(event: PickEvent): void {
@@ -169,4 +182,137 @@ export function logPickEvent(event: PickEvent): void {
 export function getIdeaCount(): number {
   const row = db.getFirstSync<{ n: number }>('SELECT COUNT(*) AS n FROM ideas');
   return row?.n ?? 0;
+}
+
+// ---------------------------------------------------------------------------
+// User profile — a single row; presence doubles as the "onboarded" flag.
+
+export function getProfile(): UserProfile | null {
+  const row = db.getFirstSync<{ json: string }>('SELECT json FROM user_profile WHERE id = 1');
+  return row ? (JSON.parse(row.json) as UserProfile) : null;
+}
+
+export function saveProfile(profile: UserProfile): void {
+  db.runSync(
+    `INSERT INTO user_profile (id, json, updatedAt) VALUES (1, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET json = excluded.json, updatedAt = excluded.updatedAt`,
+    [JSON.stringify(profile), profile.updatedAt]
+  );
+}
+
+export function hasProfile(): boolean {
+  return getProfile() !== null;
+}
+
+// ---------------------------------------------------------------------------
+// Idea stats — feed the novelty penalty and the shown-but-never-chosen decay.
+
+export function getStatsFor(ids: string[]): Map<string, IdeaStats> {
+  const result = new Map<string, IdeaStats>();
+  if (ids.length === 0) return result;
+  const placeholders = ids.map(() => '?').join(', ');
+  const rows = db.getAllSync<{
+    ideaId: string;
+    timesShown: number;
+    timesChosen: number;
+    lastShownSession: number | null;
+  }>(`SELECT * FROM idea_stats WHERE ideaId IN (${placeholders})`, ids);
+  for (const row of rows) {
+    result.set(row.ideaId, {
+      timesShown: row.timesShown,
+      timesChosen: row.timesChosen,
+      lastShownSession: row.lastShownSession,
+    });
+  }
+  return result;
+}
+
+export function recordShown(ids: string[], session: number): void {
+  const stmt = db.prepareSync(
+    `INSERT INTO idea_stats (ideaId, timesShown, timesChosen, lastShownSession)
+     VALUES (?, 1, 0, ?)
+     ON CONFLICT(ideaId) DO UPDATE SET
+       timesShown = timesShown + 1,
+       lastShownSession = excluded.lastShownSession`
+  );
+  try {
+    for (const id of ids) stmt.executeSync([id, session]);
+  } finally {
+    stmt.finalizeSync();
+  }
+}
+
+export function recordChosen(id: string): void {
+  db.runSync(
+    `INSERT INTO idea_stats (ideaId, timesShown, timesChosen, lastShownSession)
+     VALUES (?, 0, 1, NULL)
+     ON CONFLICT(ideaId) DO UPDATE SET timesChosen = timesChosen + 1`,
+    [id]
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Plans & ratings — the reveal saves a plan; ratings feed back into learning.
+
+export function savePlan(plan: Plan): void {
+  db.runSync(
+    `INSERT OR REPLACE INTO plans (id, title, stepsJson, ideaIdsJson, totalMin, costTier, createdAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      plan.id,
+      plan.title,
+      JSON.stringify(plan.steps),
+      JSON.stringify(plan.ideaIds),
+      plan.totalMin,
+      plan.costTier,
+      plan.createdAt,
+    ]
+  );
+}
+
+interface PlanRow {
+  id: string;
+  title: string;
+  stepsJson: string;
+  ideaIdsJson: string;
+  totalMin: number;
+  costTier: number;
+  createdAt: string;
+}
+
+function rowToPlan(row: PlanRow): Plan {
+  return {
+    id: row.id,
+    title: row.title,
+    steps: JSON.parse(row.stepsJson),
+    ideaIds: JSON.parse(row.ideaIdsJson),
+    totalMin: row.totalMin,
+    costTier: row.costTier as Plan['costTier'],
+    createdAt: row.createdAt,
+  };
+}
+
+/** The most recent plan that has no experience log yet — home asks about it. */
+export function getLatestUnratedPlan(): Plan | null {
+  const row = db.getFirstSync<PlanRow>(
+    `SELECT p.* FROM plans p
+     LEFT JOIN experience_logs e ON e.planId = p.id
+     WHERE e.id IS NULL
+     ORDER BY p.createdAt DESC
+     LIMIT 1`
+  );
+  return row ? rowToPlan(row) : null;
+}
+
+export function getPlanById(id: string): Plan | null {
+  const row = db.getFirstSync<PlanRow>('SELECT * FROM plans WHERE id = ?', [id]);
+  return row ? rowToPlan(row) : null;
+}
+
+export function logExperience(log: ExperienceLog): void {
+  db.runSync(
+    `INSERT INTO experience_logs (id, planId, rating, completed, photoUri, date)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [log.id, log.planId, log.rating ?? null, log.completed ? 1 : 0, log.photoUri ?? null, log.date]
+  );
 }
