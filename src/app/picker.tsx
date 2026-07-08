@@ -12,6 +12,7 @@ import { daypartWord } from '@/lib/daypart';
 import { hapticThrow } from '@/lib/haptics';
 import { useSession } from '@/lib/store/session';
 import { borders, candyOrder, canvas, cardTilt, ink } from '@/lib/theme';
+import { currentChip } from '@/lib/weather';
 import type { Idea } from '@/lib/types';
 
 // How long the losing card's fade and the winner's flight get to breathe
@@ -44,6 +45,7 @@ export default function PickerScreen() {
   const [ideaA, ideaB] = currentPair;
   const colorA = candyOrder[round % candyOrder.length];
   const colorB = candyOrder[(round + 2) % candyOrder.length];
+  const weatherChip = currentChip();
 
   const handlePick = (winner: Idea, loser: Idea, throwVelocity: number) => {
     if (resolving) return;
@@ -108,6 +110,7 @@ export default function PickerScreen() {
             resolution={resolutionFor(ideaA)}
             dragEnabled={!resolving && !reduceMotion}
             reduceMotion={reduceMotion}
+            weatherChip={weatherChip}
             onPick={(velocity) => handlePick(ideaA, ideaB, velocity)}
           />
         </Animated.View>
@@ -125,6 +128,7 @@ export default function PickerScreen() {
             resolution={resolutionFor(ideaB)}
             dragEnabled={!resolving && !reduceMotion}
             reduceMotion={reduceMotion}
+            weatherChip={weatherChip}
             onPick={(velocity) => handlePick(ideaB, ideaA, velocity)}
           />
         </Animated.View>

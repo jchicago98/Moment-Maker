@@ -3,7 +3,6 @@ import { create } from 'zustand';
 import { assemblePlan } from '@/lib/algorithm/assembly';
 import {
   applyPickUpdate,
-  applyRatingUpdate,
   applySessionDecay,
   createEmptyProfile,
   velocityFactor,
@@ -12,11 +11,8 @@ import { pickPair } from '@/lib/algorithm/pairing';
 import { hardFilter, scoreIdea, type SessionContext } from '@/lib/algorithm/scoring';
 import {
   getAllIdeas,
-  getIdeasByIds,
-  getPlanById,
   getProfile,
   getStatsFor,
-  logExperience,
   logPickEvent,
   recordChosen,
   recordShown,
@@ -24,6 +20,7 @@ import {
   savePlan,
 } from '@/lib/db/database';
 import { daypartWord } from '@/lib/daypart';
+import { currentOutlook } from '@/lib/weather';
 import type { Idea, Plan, SessionSetup, TimeOfDay, UserProfile } from '@/lib/types';
 
 export const MAX_ROUNDS = 5; // never more — decision fatigue
@@ -41,7 +38,6 @@ interface SessionState {
   startSession: () => boolean; // false if not enough ideas to build pairs
   pick: (winner: Idea, loser: Idea, throwVelocity?: number) => void;
   surpriseMe: () => void;
-  rateLastPlan: (planId: string, rating: 1 | 2 | 3 | 4 | 5) => void;
   reset: () => void;
 }
 
@@ -63,7 +59,7 @@ function contextFor(setup: SessionSetup): SessionContext {
     timeBudgetMin: setup.timeBudgetMin,
     costCap: setup.costCap,
     timeOfDay: daypartWord() as TimeOfDay,
-    weather: 'unknown', // live forecasts arrive in M4
+    weather: currentOutlook(), // cached Open-Meteo outlook; 'unknown' never filters
   };
 }
 
@@ -234,21 +230,6 @@ export const useSession = create<SessionState>((set, get) => ({
     const plan = assemblePlan(picks, internals.profile, setup);
     savePlan(plan);
     set({ winners: picks, round, currentPair: null, plan });
-  },
-
-  rateLastPlan: (planId, rating) => {
-    const plan = getPlanById(planId);
-    if (!plan) return;
-    const ideas = getIdeasByIds(plan.ideaIds);
-    const profile = getProfile() ?? createEmptyProfile();
-    saveProfile(applyRatingUpdate(profile, ideas, rating));
-    logExperience({
-      id: `exp-${Date.now()}`,
-      planId,
-      rating,
-      completed: true,
-      date: new Date().toISOString(),
-    });
   },
 
   reset: () => {

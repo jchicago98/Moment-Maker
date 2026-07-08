@@ -7,12 +7,14 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { initAudio } from '@/lib/audio/soundEngine';
 import { initDatabase } from '@/lib/db/database';
 import { canvas } from '@/lib/theme';
+import { useWeather } from '@/lib/weather';
 
 initDatabase();
 
 export default function RootLayout() {
   useEffect(() => {
     initAudio();
+    useWeather.getState().refresh();
   }, []);
 
   return (

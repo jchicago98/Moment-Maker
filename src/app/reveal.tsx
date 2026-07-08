@@ -50,8 +50,9 @@ export default function RevealScreen() {
   };
 
   const startMoment = () => {
+    const planId = plan.id;
     reset();
-    router.replace('/');
+    router.replace({ pathname: '/plan', params: { id: planId } });
   };
 
   const cardEnter = (delayMs: number) =>

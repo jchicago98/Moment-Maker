@@ -7,6 +7,7 @@ import { BigButton } from '@/components/BigButton';
 import { Chip } from '@/components/Chip';
 import { getLatestUnratedPlan, hasProfile } from '@/lib/db/database';
 import { hapticReveal } from '@/lib/haptics';
+import { ratePlan } from '@/lib/planActions';
 import { useSession } from '@/lib/store/session';
 import { useSettings } from '@/lib/store/settings';
 import { borders, candy, ink } from '@/lib/theme';
@@ -34,9 +35,42 @@ const budgets: { value: CostTier; label: string }[] = [
   { value: 3, label: '$$$' },
 ];
 
+function NavButton({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [navStyles.button, pressed && { transform: [{ scale: 0.96 }] }]}
+    >
+      <Text style={navStyles.label}>{label}</Text>
+    </Pressable>
+  );
+}
+
+const navStyles = StyleSheet.create({
+  button: {
+    borderWidth: borders.width,
+    borderColor: ink,
+    borderRadius: borders.radiusSmall,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: 'transparent',
+    flexGrow: 1,
+    flexBasis: '45%',
+    alignItems: 'center',
+    minHeight: 48,
+    justifyContent: 'center',
+  },
+  label: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: ink,
+  },
+});
+
 export default function HomeScreen() {
   const router = useRouter();
-  const { setup, setSetup, startSession, rateLastPlan } = useSession();
+  const { setup, setSetup, startSession } = useSession();
   const { soundOn, toggleSound } = useSettings();
   const [unratedPlan, setUnratedPlan] = useState<Plan | null>(null);
   const [justRated, setJustRated] = useState(false);
@@ -56,7 +90,7 @@ export default function HomeScreen() {
 
   const rate = (stars: 1 | 2 | 3 | 4 | 5) => {
     if (!unratedPlan) return;
-    rateLastPlan(unratedPlan.id, stars); // ratings are the strongest signal (§7.1)
+    ratePlan(unratedPlan.id, stars); // ratings are the strongest signal (§7.1)
     hapticReveal();
     setJustRated(true);
   };
@@ -159,6 +193,13 @@ export default function HomeScreen() {
         <View style={styles.footer}>
           <BigButton label="Deal me in 🃏" onPress={dealMeIn} />
         </View>
+
+        <View style={styles.navRow}>
+          <NavButton label="🧭 Browse" onPress={() => router.push('/browse')} />
+          <NavButton label="📔 Scrapbook" onPress={() => router.push('/history')} />
+          <NavButton label="💡 Add idea" onPress={() => router.push('/add-idea')} />
+          <NavButton label="⚙️ Settings" onPress={() => router.push('/settings')} />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -249,5 +290,12 @@ const styles = StyleSheet.create({
   },
   footer: {
     marginTop: 12,
+  },
+  navRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 4,
+    marginBottom: 16,
   },
 });

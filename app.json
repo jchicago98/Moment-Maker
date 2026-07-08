@@ -34,7 +34,19 @@
         }
       ],
       "expo-sqlite",
-      "expo-audio"
+      "expo-audio",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Moment Maker uses your rough location only to check the weather for outdoor ideas."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Moment Maker lets you attach a photo to completed plans in your scrapbook."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

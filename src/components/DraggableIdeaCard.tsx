@@ -32,6 +32,8 @@ interface Props {
   resolution: CardResolution;
   dragEnabled: boolean;
   reduceMotion: boolean;
+  /** Live weather chip ("72° clear"), shown on outdoor ideas only. */
+  weatherChip?: string | null;
   /** Fired once when this card is locked in (thrown or tapped). */
   onPick: (throwVelocity: number) => void;
 }
@@ -54,6 +56,7 @@ export function DraggableIdeaCard({
   resolution,
   dragEnabled,
   reduceMotion,
+  weatherChip,
   onPick,
 }: Props) {
   // Reanimated gesture worklets mutate shared values from render-scoped
@@ -182,6 +185,11 @@ export function DraggableIdeaCard({
           <View style={[styles.chip, { borderColor: color.border }]}>
             <Text style={[styles.chipText, { color: color.text }]}>{costLabel(idea.costTier)}</Text>
           </View>
+          {idea.setting === 'outdoor' && weatherChip && (
+            <View style={[styles.chip, { borderColor: color.border }]}>
+              <Text style={[styles.chipText, { color: color.text }]}>{weatherChip}</Text>
+            </View>
+          )}
         </View>
       </Animated.View>
     </GestureDetector>

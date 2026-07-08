@@ -6,10 +6,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DraggableIdeaCard } from '@/components/DraggableIdeaCard';
 import { VsBadge } from '@/components/VsBadge';
+import * as Location from 'expo-location';
+
 import { applyPickUpdate, createEmptyProfile } from '@/lib/algorithm/learning';
 import { playDealIn } from '@/lib/audio/soundEngine';
 import { getIdeasByIds, saveProfile } from '@/lib/db/database';
 import { borders, candyOrder, canvas, cardTilt, ink } from '@/lib/theme';
+import { useWeather } from '@/lib/weather';
 import type { Idea, UserProfile } from '@/lib/types';
 
 // Six contrasting pairs spanning the profile's dimensions: energy/setting,
@@ -54,8 +57,16 @@ export default function OnboardingScreen() {
     };
   }, []);
 
-  const finish = () => {
+  const finish = async () => {
     saveProfile(profileRef.current); // profile presence = onboarded
+    // Rough location, asked once here (§5.1) — used only for weather. Denial
+    // is fine; the app silently behaves as "weather unknown".
+    try {
+      await Location.requestForegroundPermissionsAsync();
+      useWeather.getState().refresh();
+    } catch {
+      // never block onboarding on a permission dialog hiccup
+    }
     router.replace('/');
   };
 

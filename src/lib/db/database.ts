@@ -316,3 +316,118 @@ export function logExperience(log: ExperienceLog): void {
     [log.id, log.planId, log.rating ?? null, log.completed ? 1 : 0, log.photoUri ?? null, log.date]
   );
 }
+
+interface ExperienceRow {
+  id: string;
+  planId: string;
+  rating: number | null;
+  completed: number;
+  photoUri: string | null;
+  date: string;
+}
+
+function rowToExperience(row: ExperienceRow): ExperienceLog {
+  return {
+    id: row.id,
+    planId: row.planId,
+    rating: (row.rating ?? undefined) as ExperienceLog['rating'],
+    completed: row.completed === 1,
+    photoUri: row.photoUri ?? undefined,
+    date: row.date,
+  };
+}
+
+export function getExperienceForPlan(planId: string): ExperienceLog | null {
+  const row = db.getFirstSync<ExperienceRow>(
+    'SELECT * FROM experience_logs WHERE planId = ? ORDER BY date DESC LIMIT 1',
+    [planId]
+  );
+  return row ? rowToExperience(row) : null;
+}
+
+/** Create or update the experience log for a plan. Only provided fields change. */
+export function upsertExperience(
+  planId: string,
+  fields: { rating?: 1 | 2 | 3 | 4 | 5; completed?: boolean; photoUri?: string }
+): void {
+  const existing = getExperienceForPlan(planId);
+  if (existing) {
+    db.runSync(
+      `UPDATE experience_logs SET
+         rating = COALESCE(?, rating),
+         completed = COALESCE(?, completed),
+         photoUri = COALESCE(?, photoUri)
+       WHERE id = ?`,
+      [
+        fields.rating ?? null,
+        fields.completed === undefined ? null : fields.completed ? 1 : 0,
+        fields.photoUri ?? null,
+        existing.id,
+      ]
+    );
+  } else {
+    logExperience({
+      id: `exp-${Date.now()}`,
+      planId,
+      rating: fields.rating,
+      completed: fields.completed ?? false,
+      photoUri: fields.photoUri,
+      date: new Date().toISOString(),
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// History — the scrapbook: past plans with their experience logs.
+
+export interface HistoryEntry {
+  plan: Plan;
+  experience: ExperienceLog | null;
+}
+
+export function getHistory(): HistoryEntry[] {
+  const rows = db.getAllSync<PlanRow>('SELECT * FROM plans ORDER BY createdAt DESC');
+  return rows.map((row) => {
+    const plan = rowToPlan(row);
+    return { plan, experience: getExperienceForPlan(plan.id) };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// User-added ideas — they join the deck AND teach the profile (§5.8).
+
+export function insertIdea(idea: Idea): void {
+  db.runSync(
+    `INSERT INTO ideas (id, title, description, moods, setting, costTier, durationMin,
+      groupFit, energy, timeOfDay, weatherSensitive, requiresTravel, icon, source, createdAt, broadAppeal)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      idea.id,
+      idea.title,
+      idea.description,
+      JSON.stringify(idea.moods),
+      idea.setting,
+      idea.costTier,
+      idea.durationMin,
+      JSON.stringify(idea.groupFit),
+      idea.energy,
+      JSON.stringify(idea.timeOfDay),
+      idea.weatherSensitive ? 1 : 0,
+      idea.requiresTravel ? 1 : 0,
+      idea.icon,
+      idea.source,
+      idea.createdAt,
+      idea.broadAppeal,
+    ]
+  );
+}
+
+/** Reset the learned profile (weights, stats, pick history). The scrapbook
+ * stays — memories aren't part of the profile. */
+export function resetProfileData(): void {
+  db.execSync(`
+    DELETE FROM user_profile;
+    DELETE FROM idea_stats;
+    DELETE FROM pick_events;
+  `);
+}
