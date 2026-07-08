@@ -2,7 +2,7 @@ import * as SQLite from 'expo-sqlite';
 
 import seedIdeas from '@/assets/seedIdeas.json';
 import type { IdeaStats } from '@/lib/algorithm/scoring';
-import type { ExperienceLog, Idea, PickEvent, Plan, UserProfile } from '@/lib/types';
+import type { ExperienceLog, Idea, Moment, PickEvent, Plan, UserProfile } from '@/lib/types';
 
 const db = SQLite.openDatabaseSync('momentmaker.db');
 
@@ -108,6 +108,16 @@ export function initDatabase(): void {
       totalMin INTEGER NOT NULL,
       costTier INTEGER NOT NULL,
       createdAt TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS moments (
+      id TEXT PRIMARY KEY,
+      ideaId TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      createdAt TEXT NOT NULL,
+      confirmedAt TEXT,
+      rating INTEGER,
+      photoUri TEXT
     );
   `);
 
@@ -430,4 +440,99 @@ export function resetProfileData(): void {
     DELETE FROM idea_stats;
     DELETE FROM pick_events;
   `);
+}
+
+// ---------------------------------------------------------------------------
+// Moments — one idea the user committed to. Only confirmed ('done') moments
+// appear in the scrapbook.
+
+interface MomentRow {
+  id: string;
+  ideaId: string;
+  status: string;
+  createdAt: string;
+  confirmedAt: string | null;
+  rating: number | null;
+  photoUri: string | null;
+}
+
+function rowToMoment(row: MomentRow): Moment {
+  return {
+    id: row.id,
+    ideaId: row.ideaId,
+    status: row.status as Moment['status'],
+    createdAt: row.createdAt,
+    confirmedAt: row.confirmedAt ?? undefined,
+    rating: (row.rating ?? undefined) as Moment['rating'],
+    photoUri: row.photoUri ?? undefined,
+  };
+}
+
+export interface MomentWithIdea {
+  moment: Moment;
+  idea: Idea;
+}
+
+export function insertMoment(moment: Moment): void {
+  db.runSync(
+    `INSERT INTO moments (id, ideaId, status, createdAt, confirmedAt, rating, photoUri)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      moment.id,
+      moment.ideaId,
+      moment.status,
+      moment.createdAt,
+      moment.confirmedAt ?? null,
+      moment.rating ?? null,
+      moment.photoUri ?? null,
+    ]
+  );
+}
+
+export function getMomentById(id: string): Moment | null {
+  const row = db.getFirstSync<MomentRow>('SELECT * FROM moments WHERE id = ?', [id]);
+  return row ? rowToMoment(row) : null;
+}
+
+/** The single active moment, with its idea attached. */
+export function getPendingMoment(): MomentWithIdea | null {
+  const row = db.getFirstSync<MomentRow>(
+    `SELECT * FROM moments WHERE status = 'pending' ORDER BY createdAt DESC LIMIT 1`
+  );
+  if (!row) return null;
+  const idea = getIdeasByIds([row.ideaId])[0];
+  return idea ? { moment: rowToMoment(row), idea } : null;
+}
+
+/** Only one moment can be pending at a time. */
+export function dismissPendingMoments(): void {
+  db.runSync(`UPDATE moments SET status = 'dismissed' WHERE status = 'pending'`);
+}
+
+export function updateMoment(
+  id: string,
+  fields: { status?: Moment['status']; confirmedAt?: string; rating?: 1 | 2 | 3 | 4 | 5; photoUri?: string }
+): void {
+  db.runSync(
+    `UPDATE moments SET
+       status = COALESCE(?, status),
+       confirmedAt = COALESCE(?, confirmedAt),
+       rating = COALESCE(?, rating),
+       photoUri = COALESCE(?, photoUri)
+     WHERE id = ?`,
+    [fields.status ?? null, fields.confirmedAt ?? null, fields.rating ?? null, fields.photoUri ?? null, id]
+  );
+}
+
+/** The scrapbook: confirmed moments only, newest first. */
+export function getDoneMoments(): MomentWithIdea[] {
+  const rows = db.getAllSync<MomentRow>(
+    `SELECT * FROM moments WHERE status = 'done' ORDER BY confirmedAt DESC`
+  );
+  return rows
+    .map((row) => {
+      const idea = getIdeasByIds([row.ideaId])[0];
+      return idea ? { moment: rowToMoment(row), idea } : null;
+    })
+    .filter((m): m is MomentWithIdea => m !== null);
 }

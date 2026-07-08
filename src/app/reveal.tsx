@@ -17,31 +17,35 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BigButton } from '@/components/BigButton';
 import { ConfettiBurst } from '@/components/ConfettiBurst';
-import { playGiftKnock, playRevealMelody } from '@/lib/audio/soundEngine';
+import { playDealIn, playGiftKnock, playRevealMelody } from '@/lib/audio/soundEngine';
 import { daypartWord } from '@/lib/daypart';
 import { hapticReveal } from '@/lib/haptics';
 import { iconEmoji } from '@/lib/icons';
+import { createMoment } from '@/lib/momentActions';
 import { useSession } from '@/lib/store/session';
-import { borders, candyOrder, canvas, ink } from '@/lib/theme';
+import { borders, candy, canvas, ink } from '@/lib/theme';
 
-function totalLabel(totalMin: number, costTier: number): string {
-  const hours = totalMin / 60;
-  const time = totalMin < 60 ? `${totalMin} min` : `about ${Math.round(hours * 2) / 2} h`;
-  const cost = costTier === 0 ? 'free' : '$'.repeat(costTier);
-  return `${time} · ${cost}`;
+function durationLabel(min: number): string {
+  if (min < 60) return `${min} min`;
+  if (min % 60 === 0) return `${min / 60} h`;
+  return `${Math.floor(min / 60)}½ h`;
 }
 
 export default function RevealScreen() {
   const router = useRouter();
   const reduceMotion = useReducedMotion();
-  const { plan, reset } = useSession();
+  const { finalIdea, runnerUp, reset } = useSession();
   const [opened, setOpened] = useState(false);
+  // Local copy so "Maybe another" can swap without touching the store.
+  const [idea, setIdea] = useState(finalIdea);
+  const [rerolled, setRerolled] = useState(false);
 
-  if (!plan) {
+  if (!idea) {
     return <Redirect href="/" />;
   }
 
   const daypart = daypartWord();
+  const color = candy.teal;
 
   const handleOpened = () => {
     setOpened(true);
@@ -49,50 +53,73 @@ export default function RevealScreen() {
     playRevealMelody();
   };
 
-  const startMoment = () => {
-    const planId = plan.id;
+  const letsDoIt = () => {
+    createMoment(idea);
     reset();
-    router.replace({ pathname: '/plan', params: { id: planId } });
+    router.replace('/');
   };
 
-  const cardEnter = (delayMs: number) =>
-    reduceMotion ? FadeIn.delay(delayMs) : FadeInUp.delay(delayMs).springify().damping(14);
+  const maybeAnother = () => {
+    if (!runnerUp || rerolled) return;
+    playDealIn();
+    setIdea(runnerUp);
+    setRerolled(true);
+  };
+
+  const notTonight = () => {
+    reset();
+    router.replace('/');
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
       {opened ? (
         <>
-          <ScrollView contentContainerStyle={styles.planContainer}>
-            <Animated.Text entering={cardEnter(0)} style={styles.planTitle}>
-              {plan.title} ✨
+          <ScrollView contentContainerStyle={styles.revealContainer}>
+            <Animated.Text
+              entering={reduceMotion ? FadeIn : FadeInUp.springify()}
+              style={styles.revealTitle}
+            >
+              Your {daypart}, brewed ✨
             </Animated.Text>
 
-            {plan.steps.map((step, i) => {
-              const color = candyOrder[i % candyOrder.length];
-              return (
-                <Animated.View
-                  key={`${step.title}-${i}`}
-                  entering={cardEnter(250 + i * 200)}
-                  style={[styles.stepCard, { backgroundColor: color.fill, borderColor: color.border }]}
-                >
-                  <Text style={styles.stepTime}>{step.time}</Text>
-                  <View style={styles.stepBody}>
-                    <Text style={styles.stepIcon}>{iconEmoji(step.icon)}</Text>
-                    <View style={styles.stepTextWrap}>
-                      <Text style={[styles.stepTitle, { color: color.text }]}>{step.title}</Text>
-                      <Text style={[styles.stepTip, { color: color.text }]}>{step.tip}</Text>
-                    </View>
-                  </View>
-                </Animated.View>
-              );
-            })}
+            <Animated.View
+              key={idea.id}
+              entering={reduceMotion ? FadeIn : FadeInUp.delay(250).springify().damping(13)}
+              style={[styles.ideaCard, { backgroundColor: color.fill, borderColor: color.border }]}
+            >
+              <Text style={styles.ideaIcon}>{iconEmoji(idea.icon)}</Text>
+              <Text style={[styles.ideaTitle, { color: color.text }]}>{idea.title}</Text>
+              <Text style={[styles.ideaTip, { color: color.text }]}>{idea.description}</Text>
+              <View style={styles.chipRow}>
+                <View style={[styles.chip, { borderColor: color.border }]}>
+                  <Text style={[styles.chipText, { color: color.text }]}>
+                    {durationLabel(idea.durationMin)}
+                  </Text>
+                </View>
+                <View style={[styles.chip, { borderColor: color.border }]}>
+                  <Text style={[styles.chipText, { color: color.text }]}>
+                    {idea.costTier === 0 ? 'free' : '$'.repeat(idea.costTier)}
+                  </Text>
+                </View>
+              </View>
+            </Animated.View>
 
             <Animated.View
-              entering={cardEnter(250 + plan.steps.length * 200 + 150)}
-              style={styles.planFooter}
+              entering={reduceMotion ? FadeIn : FadeInUp.delay(600).springify()}
+              style={styles.buttons}
             >
-              <Text style={styles.totalText}>{totalLabel(plan.totalMin, plan.costTier)}</Text>
-              <BigButton label={`Start my ${daypart}`} onPress={startMoment} />
+              <BigButton label="Let's do it! 🎉" onPress={letsDoIt} breathe />
+              {runnerUp && !rerolled && (
+                <BigButton label="Maybe another" variant="ghost" onPress={maybeAnother} />
+              )}
+              <Pressable
+                accessibilityRole="button"
+                onPress={notTonight}
+                style={({ pressed }) => [styles.notTonight, pressed && { opacity: 0.6 }]}
+              >
+                <Text style={styles.notTonightText}>Not tonight</Text>
+              </Pressable>
             </Animated.View>
           </ScrollView>
           {!reduceMotion && <ConfettiBurst />}
@@ -229,59 +256,68 @@ const styles = StyleSheet.create({
     color: ink,
     opacity: 0.6,
   },
-  planContainer: {
+  revealContainer: {
+    flexGrow: 1,
     padding: 24,
-    gap: 16,
+    justifyContent: 'center',
+    gap: 20,
   },
-  planTitle: {
-    fontSize: 30,
+  revealTitle: {
+    fontSize: 26,
     fontWeight: '900',
     color: ink,
-    marginTop: 8,
-    marginBottom: 4,
+    textAlign: 'center',
   },
-  stepCard: {
+  ideaCard: {
     borderWidth: borders.width,
     borderRadius: borders.radius,
-    padding: 16,
-    gap: 8,
-  },
-  stepTime: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: ink,
-    opacity: 0.75,
-  },
-  stepBody: {
-    flexDirection: 'row',
-    gap: 12,
+    padding: 24,
     alignItems: 'center',
+    gap: 10,
   },
-  stepIcon: {
-    fontSize: 34,
+  ideaIcon: {
+    fontSize: 64,
   },
-  stepTextWrap: {
-    flex: 1,
-    gap: 3,
-  },
-  stepTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  stepTip: {
-    fontSize: 13,
-    lineHeight: 18,
-    opacity: 0.85,
-  },
-  planFooter: {
-    gap: 14,
-    marginTop: 8,
-  },
-  totalText: {
+  ideaTitle: {
+    fontSize: 24,
+    fontWeight: '900',
     textAlign: 'center',
-    fontSize: 16,
-    fontWeight: '800',
+    lineHeight: 30,
+  },
+  ideaTip: {
+    fontSize: 15,
+    lineHeight: 21,
+    textAlign: 'center',
+    opacity: 0.9,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  chip: {
+    borderWidth: 2,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  buttons: {
+    gap: 10,
+  },
+  notTonight: {
+    alignSelf: 'center',
+    padding: 10,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  notTonightText: {
+    fontSize: 14,
+    fontWeight: '600',
     color: ink,
-    opacity: 0.8,
+    opacity: 0.5,
   },
 });

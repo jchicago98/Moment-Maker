@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BigButton } from '@/components/BigButton';
 import { Chip } from '@/components/Chip';
 import { hapticReveal } from '@/lib/haptics';
-import { addUserIdea } from '@/lib/planActions';
+import { addUserIdea } from '@/lib/momentActions';
 import { borders, canvas, ink } from '@/lib/theme';
 import { ALL_MOODS, type Energy, type GroupType, type Idea, type Mood } from '@/lib/types';
 
@@ -94,8 +94,12 @@ export default function AddIdeaScreen() {
       energy,
     });
     hapticReveal();
+    // It's a tab now: clear the form for next time and hop back to home.
+    setTitle('');
+    setDescription('');
+    setMoods([]);
     Alert.alert('Dealt in! 🎉', 'Your idea joined the deck — and taught us a little about you.', [
-      { text: 'Nice', onPress: () => router.back() },
+      { text: 'Nice', onPress: () => router.navigate('/') },
     ]);
   };
 

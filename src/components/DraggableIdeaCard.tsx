@@ -34,8 +34,10 @@ interface Props {
   reduceMotion: boolean;
   /** Live weather chip ("72° clear"), shown on outdoor ideas only. */
   weatherChip?: string | null;
-  /** Fired once when this card is locked in (thrown or tapped). */
+  /** Fired once when this card is locked in by a throw. */
   onPick: (throwVelocity: number) => void;
+  /** Tap = peek: opens the detail view (picking happens there or by throw). */
+  onInspect: () => void;
 }
 
 function pickupFeedback(): void {
@@ -58,6 +60,7 @@ export function DraggableIdeaCard({
   reduceMotion,
   weatherChip,
   onPick,
+  onInspect,
 }: Props) {
   // Reanimated gesture worklets mutate shared values from render-scoped
   // closures — a pattern the React Compiler can't reason about. Opt out.
@@ -140,8 +143,7 @@ export function DraggableIdeaCard({
 
   const tap = Gesture.Tap().onEnd((_e, success) => {
     if (success) {
-      runOnJS(lockFeedback)(0.4);
-      runOnJS(onPick)(0);
+      runOnJS(onInspect)();
     }
   });
 
@@ -168,7 +170,7 @@ export function DraggableIdeaCard({
       <Animated.View
         accessible
         accessibilityRole="button"
-        accessibilityLabel={`Pick ${idea.title}. Throw it off screen or tap to choose.`}
+        accessibilityLabel={`${idea.title}. Tap to read more, throw off screen to pick.`}
         style={[styles.card, { backgroundColor: color.fill, borderColor: color.border }, animatedStyle]}
       >
         <Text style={styles.icon}>{iconEmoji(idea.icon)}</Text>

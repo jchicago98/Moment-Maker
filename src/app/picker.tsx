@@ -6,8 +6,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BrewMeter } from '@/components/BrewMeter';
 import { DraggableIdeaCard } from '@/components/DraggableIdeaCard';
+import { IdeaDetailModal } from '@/components/IdeaDetailModal';
 import { VsBadge } from '@/components/VsBadge';
-import { playDealIn, playThrowLock } from '@/lib/audio/soundEngine';
+import { playDealIn, playPickup, playThrowLock } from '@/lib/audio/soundEngine';
 import { daypartWord } from '@/lib/daypart';
 import { hapticThrow } from '@/lib/haptics';
 import { useSession } from '@/lib/store/session';
@@ -24,6 +25,7 @@ export default function PickerScreen() {
   const reduceMotion = useReducedMotion();
   const { currentPair, round, totalRounds, pick, surpriseMe } = useSession();
   const [pendingWinner, setPendingWinner] = useState<Idea | null>(null);
+  const [inspecting, setInspecting] = useState<Idea | null>(null);
   const resolveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resolving = pendingWinner !== null;
@@ -52,14 +54,30 @@ export default function PickerScreen() {
     setPendingWinner(winner);
     resolveTimer.current = setTimeout(() => {
       // Synchronous: logs the event, updates the profile, computes the next
-      // most informative pair (or assembles the plan after round 5).
+      // most informative pair (or generates the final idea after round 5).
       pick(winner, loser, throwVelocity);
-      if (useSession.getState().plan) {
+      if (useSession.getState().finalIdea) {
         router.replace('/reveal');
       } else {
         setPendingWinner(null);
       }
     }, RESOLVE_MS);
+  };
+
+  const inspect = (idea: Idea) => {
+    if (resolving) return;
+    playPickup();
+    setInspecting(idea);
+  };
+
+  const pickFromModal = () => {
+    if (!inspecting) return;
+    const winner = inspecting;
+    const loser = winner.id === ideaA.id ? ideaB : ideaA;
+    setInspecting(null);
+    playThrowLock(0.4);
+    hapticThrow(0.4);
+    handlePick(winner, loser, 0);
   };
 
   const handleSurprise = () => {
@@ -97,7 +115,7 @@ export default function PickerScreen() {
       </View>
 
       <Text style={styles.prompt}>
-        {reduceMotion ? 'Tap the one that sparks joy' : 'Throw one to pick!'}
+        {reduceMotion ? 'Tap a card to read it and pick' : 'Throw one to pick — tap to peek!'}
       </Text>
 
       <View style={styles.arena}>
@@ -112,6 +130,7 @@ export default function PickerScreen() {
             reduceMotion={reduceMotion}
             weatherChip={weatherChip}
             onPick={(velocity) => handlePick(ideaA, ideaB, velocity)}
+            onInspect={() => inspect(ideaA)}
           />
         </Animated.View>
 
@@ -130,6 +149,7 @@ export default function PickerScreen() {
             reduceMotion={reduceMotion}
             weatherChip={weatherChip}
             onPick={(velocity) => handlePick(ideaB, ideaA, velocity)}
+            onInspect={() => inspect(ideaB)}
           />
         </Animated.View>
       </View>
@@ -137,6 +157,13 @@ export default function PickerScreen() {
       <View style={styles.footer}>
         <BrewMeter progress={round / totalRounds} daypart={daypartWord()} />
       </View>
+
+      <IdeaDetailModal
+        idea={inspecting}
+        color={inspecting?.id === ideaB.id ? colorB : colorA}
+        onPick={pickFromModal}
+        onClose={() => setInspecting(null)}
+      />
     </SafeAreaView>
   );
 }

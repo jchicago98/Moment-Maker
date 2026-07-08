@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import { assemblePlan } from '@/lib/algorithm/assembly';
+import { pickFinalIdea } from '@/lib/algorithm/finalIdea';
 import {
   applyPickUpdate,
   applySessionDecay,
@@ -17,11 +17,10 @@ import {
   recordChosen,
   recordShown,
   saveProfile,
-  savePlan,
 } from '@/lib/db/database';
 import { daypartWord } from '@/lib/daypart';
 import { currentOutlook } from '@/lib/weather';
-import type { Idea, Plan, SessionSetup, TimeOfDay, UserProfile } from '@/lib/types';
+import type { Idea, SessionSetup, TimeOfDay, UserProfile } from '@/lib/types';
 
 export const MAX_ROUNDS = 5; // never more — decision fatigue
 
@@ -32,7 +31,9 @@ interface SessionState {
   totalRounds: number;
   currentPair: [Idea, Idea] | null;
   winners: Idea[];
-  plan: Plan | null;
+  /** The reveal payoff: one freshly generated idea (plus a re-roll spare). */
+  finalIdea: Idea | null;
+  runnerUp: Idea | null;
 
   setSetup: (setup: Partial<SessionSetup>) => void;
   startSession: () => boolean; // false if not enough ideas to build pairs
@@ -96,6 +97,24 @@ function nextPair(ints: SessionInternals, round: number): [Idea, Idea] | null {
   return pair;
 }
 
+/** After the last pick: generate ONE fresh idea (plus a re-roll spare) from
+ * the post-session profile, excluding everything shown during the quiz. */
+function finishSession(
+  set: (partial: Partial<SessionState>) => void,
+  winners: Idea[],
+  round: number
+): void {
+  if (!internals) return;
+  const stats = getStatsFor(internals.pool.map((i) => i.id));
+  const { best, runnerUp } = pickFinalIdea(internals.pool, internals.usedIds, internals.profile, {
+    stats,
+    currentSession: internals.profile.totalSessions,
+    rng: Math.random,
+  });
+  if (best) recordShown([best.id], internals.profile.totalSessions);
+  set({ winners, round, currentPair: null, finalIdea: best, runnerUp });
+}
+
 const defaultSetup: SessionSetup = {
   group: 'couple',
   timeBudgetMin: 180,
@@ -109,7 +128,8 @@ export const useSession = create<SessionState>((set, get) => ({
   totalRounds: MAX_ROUNDS,
   currentPair: null,
   winners: [],
-  plan: null,
+  finalIdea: null,
+  runnerUp: null,
 
   setSetup: (partial) => set((s) => ({ setup: { ...s.setup, ...partial } })),
 
@@ -150,13 +170,14 @@ export const useSession = create<SessionState>((set, get) => ({
       round: 0,
       currentPair: pair,
       winners: [],
-      plan: null,
+      finalIdea: null,
+      runnerUp: null,
     });
     return true;
   },
 
   pick: (winner, loser, throwVelocity = 0) => {
-    const { sessionId, round, winners, setup } = get();
+    const { sessionId, round, winners } = get();
     if (!sessionId || !internals) return;
 
     logPickEvent({
@@ -180,9 +201,7 @@ export const useSession = create<SessionState>((set, get) => ({
     const nextRound = round + 1;
 
     if (nextRound >= MAX_ROUNDS) {
-      const plan = assemblePlan(nextWinners, internals.profile, setup);
-      savePlan(plan);
-      set({ winners: nextWinners, round: nextRound, currentPair: null, plan });
+      finishSession(set, nextWinners, nextRound);
       return;
     }
 
@@ -191,9 +210,7 @@ export const useSession = create<SessionState>((set, get) => ({
     rescore(internals);
     const pair = nextPair(internals, nextRound);
     if (!pair) {
-      const plan = assemblePlan(nextWinners, internals.profile, setup);
-      savePlan(plan);
-      set({ winners: nextWinners, round: nextRound, currentPair: null, plan });
+      finishSession(set, nextWinners, nextRound);
       return;
     }
     set({ winners: nextWinners, round: nextRound, currentPair: pair });
@@ -203,7 +220,7 @@ export const useSession = create<SessionState>((set, get) => ({
     // Auto-pick the rest: the higher-scored side of each remaining pair wins.
     // No profile updates — these aren't the user's choices; if the surprise
     // lands, the post-experience rating teaches us instead.
-    const { sessionId, setup } = get();
+    const { sessionId } = get();
     if (!sessionId || !internals) return;
 
     let { round, winners, currentPair } = get();
@@ -227,13 +244,18 @@ export const useSession = create<SessionState>((set, get) => ({
       currentPair = round < MAX_ROUNDS ? nextPair(internals, round) : null;
     }
 
-    const plan = assemblePlan(picks, internals.profile, setup);
-    savePlan(plan);
-    set({ winners: picks, round, currentPair: null, plan });
+    finishSession(set, picks, round);
   },
 
   reset: () => {
     internals = null;
-    set({ sessionId: null, round: 0, currentPair: null, winners: [], plan: null });
+    set({
+      sessionId: null,
+      round: 0,
+      currentPair: null,
+      winners: [],
+      finalIdea: null,
+      runnerUp: null,
+    });
   },
 }));

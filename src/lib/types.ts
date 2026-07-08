@@ -102,3 +102,18 @@ export interface SessionSetup {
   timeBudgetMin: number;
   costCap: CostTier;
 }
+
+/**
+ * A moment: one idea the user committed to ("Let's do it!"). It stays
+ * `pending` until they confirm it actually happened — only `done` moments
+ * enter the scrapbook.
+ */
+export interface Moment {
+  id: string;
+  ideaId: string;
+  status: 'pending' | 'done' | 'dismissed';
+  createdAt: string;
+  confirmedAt?: string;
+  rating?: 1 | 2 | 3 | 4 | 5;
+  photoUri?: string;
+}

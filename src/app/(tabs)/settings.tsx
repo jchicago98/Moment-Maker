@@ -107,14 +107,6 @@ export default function SettingsScreen() {
         >
           <Text style={styles.resetText}>Reset my taste profile</Text>
         </Pressable>
-
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.back()}
-          style={({ pressed }) => [styles.backLink, pressed && { opacity: 0.6 }]}
-        >
-          <Text style={styles.backText}>Back</Text>
-        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -212,17 +204,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     color: candy.coral.text,
-  },
-  backLink: {
-    alignSelf: 'center',
-    padding: 12,
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  backText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: ink,
-    opacity: 0.5,
   },
 });

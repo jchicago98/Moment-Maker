@@ -5,6 +5,7 @@ import Animated, { FadeIn, FadeInDown, useReducedMotion } from 'react-native-rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DraggableIdeaCard } from '@/components/DraggableIdeaCard';
+import { IdeaDetailModal } from '@/components/IdeaDetailModal';
 import { VsBadge } from '@/components/VsBadge';
 import * as Location from 'expo-location';
 
@@ -35,6 +36,7 @@ export default function OnboardingScreen() {
   const reduceMotion = useReducedMotion();
   const [step, setStep] = useState(0);
   const [pendingWinner, setPendingWinner] = useState<Idea | null>(null);
+  const [inspecting, setInspecting] = useState<Idea | null>(null);
   const profileRef = useRef<UserProfile>(createEmptyProfile());
   const resolveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -87,6 +89,14 @@ export default function OnboardingScreen() {
     }, RESOLVE_MS);
   };
 
+  const pickFromModal = (pair: [Idea, Idea]) => {
+    if (!inspecting) return;
+    const winner = inspecting;
+    const loser = winner.id === pair[0].id ? pair[1] : pair[0];
+    setInspecting(null);
+    handlePick(winner, loser);
+  };
+
   // Seed data missing (shouldn't happen) — don't trap the user.
   useEffect(() => {
     if (pairs.length === 0) finish();
@@ -132,6 +142,7 @@ export default function OnboardingScreen() {
             dragEnabled={!resolving && !reduceMotion}
             reduceMotion={reduceMotion}
             onPick={() => handlePick(ideaA, ideaB)}
+            onInspect={() => !resolving && setInspecting(ideaA)}
           />
         </Animated.View>
 
@@ -149,9 +160,17 @@ export default function OnboardingScreen() {
             dragEnabled={!resolving && !reduceMotion}
             reduceMotion={reduceMotion}
             onPick={() => handlePick(ideaB, ideaA)}
+            onInspect={() => !resolving && setInspecting(ideaB)}
           />
         </Animated.View>
       </View>
+
+      <IdeaDetailModal
+        idea={inspecting}
+        color={inspecting?.id === ideaB.id ? colorB : colorA}
+        onPick={() => pickFromModal([ideaA, ideaB])}
+        onClose={() => setInspecting(null)}
+      />
 
       <Pressable
         accessibilityRole="button"
