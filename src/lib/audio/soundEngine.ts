@@ -6,6 +6,10 @@
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
 
 import chordSrc from '@/assets/sounds/chord.wav';
+import musicDay from '@/assets/sounds/music-day.wav';
+import musicDusk from '@/assets/sounds/music-dusk.wav';
+import musicMorning from '@/assets/sounds/music-morning.wav';
+import musicNight from '@/assets/sounds/music-night.wav';
 import marimba00 from '@/assets/sounds/marimba-00.wav';
 import marimba01 from '@/assets/sounds/marimba-01.wav';
 import marimba02 from '@/assets/sounds/marimba-02.wav';
@@ -19,6 +23,7 @@ import marimba09 from '@/assets/sounds/marimba-09.wav';
 import knockSrc from '@/assets/sounds/knock.wav';
 import woodblockSrc from '@/assets/sounds/woodblock.wav';
 import { useSettings } from '@/lib/store/settings';
+import { daypartOf, type Daypart } from '@/lib/theme';
 
 const marimbaSources = [
   marimba00,
@@ -33,10 +38,19 @@ const marimbaSources = [
   marimba09,
 ];
 
+const musicSources: Record<Daypart, number> = {
+  morning: musicMorning,
+  day: musicDay,
+  dusk: musicDusk,
+  night: musicNight,
+};
+
 let marimbaPlayers: AudioPlayer[] = [];
 let woodblockPlayer: AudioPlayer | null = null;
 let knockPlayer: AudioPlayer | null = null;
 let chordPlayer: AudioPlayer | null = null;
+let musicPlayers: Partial<Record<Daypart, AudioPlayer>> = {};
+let playingDaypart: Daypart | null = null;
 let ready = false;
 
 const timers: ReturnType<typeof setTimeout>[] = [];
@@ -53,7 +67,16 @@ export async function initAudio(): Promise<void> {
     woodblockPlayer = createAudioPlayer(woodblockSrc);
     knockPlayer = createAudioPlayer(knockSrc);
     chordPlayer = createAudioPlayer(chordSrc);
+    musicPlayers = Object.fromEntries(
+      (Object.keys(musicSources) as Daypart[]).map((dp) => {
+        const player = createAudioPlayer(musicSources[dp]);
+        player.loop = true;
+        player.volume = MUSIC_VOLUME;
+        return [dp, player];
+      })
+    );
     ready = true;
+    updateMusic();
   } catch (e) {
     // Sound is identity, but never a blocker — the app stays silent on failure.
     console.warn('Audio init failed', e);
@@ -124,4 +147,34 @@ export function playRevealMelody(): void {
   later(() => trigger(marimbaPlayers[5], 0.8), 190);
   later(() => trigger(marimbaPlayers[7], 0.85), 380);
   later(() => trigger(chordPlayer, 0.9), 640);
+}
+
+// ---------------------------------------------------------------------------
+// Background music: gentle loops that change with the time of day, quiet by
+// design, always behind the global mute AND its own toggle. Every loop stays
+// in the C-pentatonic family, so drag ticks are always in key (§4).
+
+const MUSIC_VOLUME = 0.22;
+
+/** Start/stop/switch the loop to match the clock and the toggles. Safe to
+ * call any time — on app start, foreground, or settings changes. */
+export function updateMusic(): void {
+  if (!ready) return;
+  const { soundOn, musicOn } = useSettings.getState();
+  const wanted = soundOn && musicOn ? daypartOf() : null;
+  if (wanted === playingDaypart) return;
+
+  try {
+    if (playingDaypart) musicPlayers[playingDaypart]?.pause();
+    if (wanted) {
+      const player = musicPlayers[wanted];
+      if (player) {
+        player.volume = MUSIC_VOLUME;
+        player.play();
+      }
+    }
+    playingDaypart = wanted;
+  } catch {
+    playingDaypart = null;
+  }
 }

@@ -34,3 +34,26 @@ export const borders = {
 } as const;
 
 export const cardTilt = 4; // degrees, never exceed 5
+
+// ---------------------------------------------------------------------------
+// Time-of-day theming: the canvas warms and cools with the clock, synced with
+// the adaptive music. All tints stay in the light range so the chunky ink
+// (#2C2C2A) keeps its contrast everywhere — a true deep-blue night mode waits
+// for a full dark palette (cards, chips, ink) in a later pass.
+
+export type Daypart = 'morning' | 'day' | 'dusk' | 'night';
+
+export function daypartOf(date: Date = new Date()): Daypart {
+  const hour = date.getHours();
+  if (hour >= 5 && hour < 11) return 'morning';
+  if (hour >= 11 && hour < 17) return 'day';
+  if (hour >= 17 && hour < 21) return 'dusk';
+  return 'night';
+}
+
+export const daypartCanvas: Record<Daypart, string> = {
+  morning: '#FDF0DF', // soft peach
+  day: '#FDF6EC', // the classic cream
+  dusk: '#FAE9DE', // warm orange with a hint of plum
+  night: '#ECEBF4', // cool lavender-blue dusk-of-cream
+};

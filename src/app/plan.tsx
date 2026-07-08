@@ -1,6 +1,7 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useReducedMotion } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BigButton } from '@/components/BigButton';
@@ -22,6 +23,7 @@ function totalLabel(totalMin: number, costTier: number): string {
 
 export default function PlanScreen() {
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [plan, setPlan] = useState<Plan | null>(null);
   const [completed, setCompleted] = useState(false);
@@ -158,7 +160,7 @@ export default function PlanScreen() {
           </View>
         )}
       </ScrollView>
-      {celebrate && <ConfettiBurst />}
+      {celebrate && !reduceMotion && <ConfettiBurst />}
     </SafeAreaView>
   );
 }

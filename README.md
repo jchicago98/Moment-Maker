@@ -10,6 +10,7 @@ See [CLAUDE.md](./CLAUDE.md) for the full product spec, design language, and bui
 **M2 — physics & sound** ✅
 **M3 — the algorithm** ✅
 **M4 — the rest of the app** ✅
+**M5 — juice pass** ✅
 
 - Expo (SDK 57) + expo-router + TypeScript strict
 - 130 seed ideas generated into `assets/seedIdeas.json` and loaded into SQLite on first launch
@@ -25,9 +26,17 @@ See [CLAUDE.md](./CLAUDE.md) for the full product spec, design language, and bui
 - **Browse**: the whole idea deck with filters (mood, budget, duration, group, indoor/outdoor, walking-distance, energy, time of day) and weather-aware badges
 - **Add your own idea**: friendly chip form; the idea joins the deck and teaches the profile at 2× strength
 - **Weather**: coarse location + Open-Meteo (no key), 3-hour cache, feeds the session hard filter and the "72° clear" chips; silently degrades to "unknown" without permission
-- **Settings**: sound/haptics toggles, location permission, reset-profile (scrapbook survives)
+- **Settings**: sound/music/haptics toggles, location permission, reset-profile (scrapbook survives)
+- **Time-of-day theming**: the canvas warms and cools with the clock (morning peach → midday cream → dusk orange → night lavender-blue), synced with the music
+- **Adaptive music**: four gentle placeholder loops (morning/day/dusk/night), all in the C-pentatonic family so drag ticks are always in key; quiet, looped seamlessly, behind the global mute and its own toggle
+- Micro-animations: breathing hero button, staggered scrapbook shelf, all gated by reduce-motion
 
-Coming next (M5): juice pass — time-of-day theming + music, micro-animations, copy polish, empty states.
+## Backlog (post-v1 ideas)
+
+- Recorded marimba/woodblock samples + music to replace the synth placeholders
+- A true deep-blue night palette (needs dark variants of ink, chips, and cards)
+- Accessibility-needs filter in browse (needs a field on the `Idea` schema)
+- Location-specific idea discovery
 
 ## Run it
 

@@ -12,7 +12,7 @@ import { useWeather } from '@/lib/weather';
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { soundOn, hapticsOn, toggleSound, toggleHaptics } = useSettings();
+  const { soundOn, musicOn, hapticsOn, toggleSound, toggleMusic, toggleHaptics } = useSettings();
   const reset = useSession((s) => s.reset);
   const [locationStatus, setLocationStatus] = useState<string>('checking…');
 
@@ -69,8 +69,15 @@ export default function SettingsScreen() {
               accessibilityLabel="Toggle haptics"
             />
           </Row>
-          <Row label="Music" hint="Time-of-day loops arrive with the juice pass (M5)">
-            <Text style={styles.soon}>soon</Text>
+          <Row label="Music" hint="Gentle loops that change with the time of day">
+            <Switch
+              value={musicOn}
+              onValueChange={toggleMusic}
+              disabled={!soundOn}
+              trackColor={{ true: candy.teal.fill, false: '#D8D2C6' }}
+              thumbColor={canvas}
+              accessibilityLabel="Toggle background music"
+            />
           </Row>
           <Row label="Reduce motion" hint="Follows your device's accessibility setting">
             <Text style={styles.soon}>system</Text>

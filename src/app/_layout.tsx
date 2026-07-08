@@ -1,20 +1,38 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
-import { StyleSheet } from 'react-native';
+import { useEffect, useState } from 'react';
+import { AppState, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import { initAudio } from '@/lib/audio/soundEngine';
+import { initAudio, updateMusic } from '@/lib/audio/soundEngine';
 import { initDatabase } from '@/lib/db/database';
-import { canvas } from '@/lib/theme';
+import { useSettings } from '@/lib/store/settings';
+import { daypartCanvas, daypartOf } from '@/lib/theme';
 import { useWeather } from '@/lib/weather';
 
 initDatabase();
 
 export default function RootLayout() {
+  // The canvas warms and cools with the clock (morning peach → midday cream →
+  // dusk orange → night lavender-blue), re-checked whenever we come foreground.
+  const [canvasColor, setCanvasColor] = useState(() => daypartCanvas[daypartOf()]);
+
   useEffect(() => {
     initAudio();
     useWeather.getState().refresh();
+
+    const appState = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        setCanvasColor(daypartCanvas[daypartOf()]);
+        updateMusic(); // the loop follows the clock too
+        useWeather.getState().refresh();
+      }
+    });
+    const unsubscribeSettings = useSettings.subscribe(updateMusic);
+    return () => {
+      appState.remove();
+      unsubscribeSettings();
+    };
   }, []);
 
   return (
@@ -23,7 +41,7 @@ export default function RootLayout() {
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: canvas },
+          contentStyle: { backgroundColor: canvasColor },
           animation: 'fade',
         }}
       />

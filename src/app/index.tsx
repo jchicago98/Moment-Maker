@@ -191,7 +191,7 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.footer}>
-          <BigButton label="Deal me in 🃏" onPress={dealMeIn} />
+          <BigButton label="Deal me in 🃏" onPress={dealMeIn} breathe />
         </View>
 
         <View style={styles.navRow}>

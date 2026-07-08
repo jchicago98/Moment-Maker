@@ -4,6 +4,7 @@ import { File, Paths } from 'expo-file-system';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeInUp, useReducedMotion } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getHistory, type HistoryEntry } from '@/lib/db/database';
@@ -18,6 +19,7 @@ function formatDate(iso: string): string {
 
 export default function HistoryScreen() {
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
 
   const refresh = useCallback(() => setEntries(getHistory()), []);
@@ -70,6 +72,13 @@ export default function HistoryScreen() {
           const { plan, experience } = item;
           const rating = experience?.rating;
           return (
+            <Animated.View
+              entering={
+                reduceMotion
+                  ? undefined
+                  : FadeInUp.delay(Math.min(index, 6) * 70).springify().damping(15)
+              }
+            >
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`Open plan ${plan.title}`}
@@ -141,6 +150,7 @@ export default function HistoryScreen() {
                 )}
               </View>
             </Pressable>
+            </Animated.View>
           );
         }}
       />
