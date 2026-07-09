@@ -6,12 +6,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BigButton } from '@/components/BigButton';
 import { ConfettiBurst } from '@/components/ConfettiBurst';
-import { IconHalo } from '@/components/IconHalo';
 import { ScheduleSheet } from '@/components/ScheduleSheet';
-import { daypartWord } from '@/lib/daypart';
-import { getPendingMoment, hasProfile, type MomentWithIdea } from '@/lib/db/database';
+import {
+  getDoneMoments,
+  getPendingMoment,
+  hasProfile,
+  type MomentWithIdea,
+} from '@/lib/db/database';
 import { hapticReveal } from '@/lib/haptics';
-import { iconEmoji } from '@/lib/icons';
 import {
   confirmMoment,
   dismissMoment,
@@ -20,17 +22,18 @@ import {
   readyToAsk,
   rescheduleMoment,
 } from '@/lib/momentActions';
-import { accent, borders, daypartEmoji, daypartOf, ink, inkSoft, softShadow, surface } from '@/lib/theme';
+import { accent, capsLabel, fonts, ink, inkFaint, inkHead, inkSoft, rule } from '@/lib/theme';
 import { currentChip } from '@/lib/weather';
 
-function greeting(): string {
-  const daypart = daypartWord();
-  if (daypart === 'night') return 'Up late?';
-  return `Good ${daypart}`;
+function dateline(): string {
+  const now = new Date();
+  const day = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+  const weather = currentChip();
+  return weather ? `${day} · ${weather}` : day;
 }
 
 function scheduleLine(scheduledFor?: string): string {
-  if (!scheduledFor) return 'whenever you’re ready ✨';
+  if (!scheduledFor) return 'whenever you’re ready';
   const date = new Date(scheduledFor);
   const time = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const today = new Date();
@@ -46,7 +49,8 @@ export default function HomeScreen() {
   const router = useRouter();
   const reduceMotion = useReducedMotion();
   const [pending, setPending] = useState<MomentWithIdea | null>(null);
-  // After "We did it!": a short celebration state with stars + photo.
+  const [lastDone, setLastDone] = useState<MomentWithIdea | null>(null);
+  // After "We did it": a short celebration state with stars + photo.
   const [celebrating, setCelebrating] = useState<MomentWithIdea | null>(null);
   const [rating, setRating] = useState<number | null>(null);
   const [hasPhoto, setHasPhoto] = useState(false);
@@ -55,6 +59,7 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       setPending(getPendingMoment());
+      setLastDone(getDoneMoments()[0] ?? null);
       setCelebrating(null);
       setRating(null);
       setHasPhoto(false);
@@ -100,21 +105,16 @@ export default function HomeScreen() {
   };
 
   const asking = pending !== null && readyToAsk(pending.moment);
-  const weather = currentChip();
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.topRow}>
-        <Text style={styles.greeting}>{greeting()}</Text>
-        {weather && <Text style={styles.weather}>{weather}</Text>}
-      </View>
-
       <View style={styles.container}>
+        <Text style={capsLabel}>{dateline()}</Text>
+
         {celebrating ? (
-          <View style={styles.card}>
-            <IconHalo emoji={iconEmoji(celebrating.idea.icon)} size="l" />
-            <Text style={styles.cardTitle}>Stamped into your scrapbook!</Text>
-            <Text style={styles.cardSub}>{rating ? 'A moment well made.' : 'How was it?'}</Text>
+          <View style={styles.block}>
+            <Text style={styles.headline}>Into the journal it goes.</Text>
+            <Text style={styles.sub}>{celebrating.idea.title}</Text>
             <View style={styles.starRow}>
               {([1, 2, 3, 4, 5] as const).map((stars) => (
                 <Pressable
@@ -125,7 +125,7 @@ export default function HomeScreen() {
                   style={styles.star}
                 >
                   <Text style={[styles.starText, !(rating && stars <= rating) && styles.starDim]}>
-                    ⭐
+                    ★
                   </Text>
                 </Pressable>
               ))}
@@ -133,72 +133,89 @@ export default function HomeScreen() {
             <Pressable
               accessibilityRole="button"
               onPress={addPhoto}
-              style={({ pressed }) => [styles.softPill, pressed && { opacity: 0.7 }]}
+              style={({ pressed }) => [styles.textAction, pressed && { opacity: 0.6 }]}
             >
-              <Text style={styles.softPillText}>
-                {hasPhoto ? '📷 photo saved!' : '📷 add a photo'}
+              <Text style={styles.textActionLabel}>
+                {hasPhoto ? 'Photo saved' : 'Add a photograph →'}
               </Text>
             </Pressable>
           </View>
         ) : pending ? (
-          <>
-            <View style={styles.card}>
-              <Text style={styles.eyebrow}>{asking ? 'Checking in' : 'Up next'}</Text>
-              <IconHalo emoji={iconEmoji(pending.idea.icon)} size="l" />
-              <Text style={styles.cardTitle}>
-                {asking ? `So… did “${pending.idea.title}” happen?` : pending.idea.title}
-              </Text>
-              <Text style={styles.moods}>{pending.idea.moods.join(' · ')}</Text>
-              {!asking && (
-                <Text style={styles.schedule}>{scheduleLine(pending.moment.scheduledFor)}</Text>
-              )}
-              {asking ? (
-                <View style={styles.askButtons}>
-                  <BigButton label="We did it! 🎉" onPress={weDidIt} />
-                  <BigButton label="Not this time 💤" variant="ghost" onPress={notThisTime} />
-                </View>
-              ) : (
-                <View style={styles.momentActions}>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => setScheduling(true)}
-                    style={({ pressed }) => [styles.softPill, pressed && { opacity: 0.7 }]}
-                  >
-                    <Text style={styles.softPillText}>🕰 edit time</Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={weDidIt}
-                    style={({ pressed }) => [styles.softPill, pressed && { opacity: 0.7 }]}
-                  >
-                    <Text style={styles.softPillText}>✓ mark as done</Text>
-                  </Pressable>
-                </View>
-              )}
-            </View>
+          <View style={styles.block}>
+            <Text style={[capsLabel, { color: accent }]}>
+              {asking ? 'Checking in' : 'This evening'}
+            </Text>
+            <Text style={styles.headline}>
+              {asking ? `So — did “${pending.idea.title}” happen?` : pending.idea.title}
+            </Text>
             {!asking && (
-              <Pressable
-                accessibilityRole="button"
-                onPress={notThisTime}
-                style={({ pressed }) => [styles.smallLink, pressed && { opacity: 0.6 }]}
-              >
-                <Text style={styles.smallLinkText}>brew something else</Text>
-              </Pressable>
+              <>
+                <Text style={styles.sub}>{pending.idea.description}</Text>
+                <Text style={styles.schedule}>{scheduleLine(pending.moment.scheduledFor)}</Text>
+              </>
             )}
-          </>
+            {asking ? (
+              <View style={styles.buttons}>
+                <BigButton label="We did it" onPress={weDidIt} />
+                <BigButton label="Not this time" variant="ghost" onPress={notThisTime} />
+              </View>
+            ) : (
+              <View style={styles.actionRow}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setScheduling(true)}
+                  style={({ pressed }) => [styles.textAction, pressed && { opacity: 0.6 }]}
+                >
+                  <Text style={styles.textActionLabel}>Edit time</Text>
+                </Pressable>
+                <Text style={styles.actionDivider}>·</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={weDidIt}
+                  style={({ pressed }) => [styles.textAction, pressed && { opacity: 0.6 }]}
+                >
+                  <Text style={styles.textActionLabel}>Mark as done</Text>
+                </Pressable>
+                <Text style={styles.actionDivider}>·</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={notThisTime}
+                  style={({ pressed }) => [styles.textAction, pressed && { opacity: 0.6 }]}
+                >
+                  <Text style={[styles.textActionLabel, { color: inkFaint }]}>Let it go</Text>
+                </Pressable>
+              </View>
+            )}
+          </View>
         ) : (
-          <View style={styles.prompt}>
-            <IconHalo emoji={daypartEmoji[daypartOf()]} size="l" />
-            <Text style={styles.promptTitle}>What should we{'\n'}do today?</Text>
-            <View style={styles.promptButtons}>
-              <BigButton label="Help me pick 🃏" onPress={() => router.push('/setup')} breathe />
+          <View style={styles.block}>
+            <Text style={styles.headline}>What should we do tonight?</Text>
+            <Text style={styles.sub}>Five quick choices and we’ll have an answer.</Text>
+            <View style={styles.buttons}>
+              <BigButton label="Help me decide" onPress={() => router.push('/setup')} />
               <BigButton
-                label="I'll browse 🧭"
+                label="Browse the collection"
                 variant="ghost"
                 onPress={() => router.navigate('/browse')}
               />
             </View>
           </View>
+        )}
+
+        {lastDone && !celebrating && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open your journal"
+            onPress={() => router.navigate('/history')}
+            style={({ pressed }) => [styles.lastTime, pressed && { opacity: 0.7 }]}
+          >
+            <Text style={styles.lastTimeText} numberOfLines={1}>
+              Last time — {lastDone.idea.title}
+            </Text>
+            <Text style={styles.lastTimeStars}>
+              {lastDone.moment.rating ? '★'.repeat(lastDone.moment.rating) : '→'}
+            </Text>
+          </Pressable>
         )}
       </View>
 
@@ -220,124 +237,81 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
   },
-  topRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 28,
-    paddingTop: 14,
-  },
-  greeting: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: inkSoft,
-    letterSpacing: 0.3,
-  },
-  weather: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: inkSoft,
-  },
   container: {
     flex: 1,
-    padding: 28,
+    paddingHorizontal: 26,
+    paddingTop: 18,
+    paddingBottom: 20,
+  },
+  block: {
+    flex: 1,
     justifyContent: 'center',
-    gap: 18,
-  },
-  prompt: {
-    alignItems: 'center',
-    gap: 24,
-  },
-  promptTitle: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: ink,
-    textAlign: 'center',
-    lineHeight: 42,
-    letterSpacing: 0.3,
-  },
-  promptButtons: {
-    alignSelf: 'stretch',
     gap: 12,
   },
-  card: {
-    backgroundColor: surface,
-    borderRadius: borders.radius,
-    padding: 26,
-    alignItems: 'center',
-    gap: 8,
-    ...softShadow,
+  headline: {
+    fontFamily: fonts.serif,
+    fontSize: 33,
+    lineHeight: 40,
+    color: inkHead,
   },
-  eyebrow: {
-    fontSize: 12,
-    fontWeight: '700',
+  sub: {
+    fontFamily: fonts.serifItalic,
+    fontSize: 15.5,
+    lineHeight: 23,
     color: inkSoft,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    marginBottom: 4,
-  },
-  cardTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: ink,
-    textAlign: 'center',
-    lineHeight: 29,
-    letterSpacing: 0.2,
-    marginTop: 6,
-  },
-  cardSub: {
-    fontSize: 14,
-    color: inkSoft,
-  },
-  moods: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: accent,
-    letterSpacing: 0.4,
   },
   schedule: {
     fontSize: 15,
     fontWeight: '600',
     color: ink,
-    marginTop: 2,
+    fontVariant: ['tabular-nums'],
   },
-  askButtons: {
-    alignSelf: 'stretch',
+  buttons: {
     gap: 10,
-    marginTop: 12,
+    marginTop: 14,
   },
-  momentActions: {
+  actionRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 10,
-    marginTop: 10,
+    marginTop: 8,
   },
-  softPill: {
-    borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: 'rgba(75, 67, 86, 0.06)',
+  textAction: {
     minHeight: 44,
     justifyContent: 'center',
   },
-  softPillText: {
-    fontSize: 13,
+  textActionLabel: {
+    fontSize: 13.5,
     fontWeight: '600',
-    color: ink,
+    color: accent,
+    letterSpacing: 0.3,
   },
-  smallLink: {
-    alignSelf: 'center',
-    padding: 10,
+  actionDivider: {
+    color: inkFaint,
+  },
+  lastTime: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: rule,
+    paddingTop: 16,
     minHeight: 44,
-    justifyContent: 'center',
   },
-  smallLinkText: {
-    fontSize: 14,
-    fontWeight: '600',
+  lastTimeText: {
+    flex: 1,
+    fontSize: 13.5,
     color: inkSoft,
+  },
+  lastTimeStars: {
+    fontSize: 13.5,
+    color: accent,
+    letterSpacing: 2,
   },
   starRow: {
     flexDirection: 'row',
-    marginTop: 2,
+    marginTop: 4,
   },
   star: {
     minWidth: 44,
@@ -346,9 +320,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   starText: {
-    fontSize: 24,
+    fontSize: 26,
+    color: accent,
   },
   starDim: {
-    opacity: 0.3,
+    color: rule,
   },
 });

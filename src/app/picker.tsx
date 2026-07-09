@@ -7,12 +7,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrewMeter } from '@/components/BrewMeter';
 import { DraggableIdeaCard } from '@/components/DraggableIdeaCard';
 import { IdeaDetailModal } from '@/components/IdeaDetailModal';
-import { VsBadge } from '@/components/VsBadge';
 import { playDealIn, playPickup, playThrowLock } from '@/lib/audio/soundEngine';
-import { daypartWord } from '@/lib/daypart';
 import { hapticThrow } from '@/lib/haptics';
 import { useSession } from '@/lib/store/session';
-import { accent, cardTilt, ink, inkSoft, softShadow, surface } from '@/lib/theme';
+import { accent, cardTilt, fonts, inkFaint, inkSoft } from '@/lib/theme';
 import type { Idea } from '@/lib/types';
 
 // How long the losing card's fade and the winner's flight get to breathe
@@ -95,24 +93,8 @@ export default function PickerScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <View style={styles.roundBadge}>
-          <Text style={styles.roundText}>
-            {Math.min(round + 1, totalRounds)} / {totalRounds}
-          </Text>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Just surprise me"
-          onPress={handleSurprise}
-          style={({ pressed }) => [styles.surprisePill, pressed && { transform: [{ scale: 0.96 }] }]}
-        >
-          <Text style={styles.surpriseText}>🎲 Just surprise me</Text>
-        </Pressable>
+        <BrewMeter round={round} totalRounds={totalRounds} />
       </View>
-
-      <Text style={styles.prompt}>
-        {reduceMotion ? 'Tap a card to read it and pick' : 'Throw one to pick — tap to peek!'}
-      </Text>
 
       <View style={styles.arena}>
         <Animated.View key={`${round}-a`} entering={dealIn} style={styles.cardA}>
@@ -128,9 +110,7 @@ export default function PickerScreen() {
           />
         </Animated.View>
 
-        <View style={styles.vsWrap}>
-          <VsBadge />
-        </View>
+        <Text style={styles.or}>— or —</Text>
 
         <Animated.View key={`${round}-b`} entering={dealInDelayed} style={styles.cardB}>
           <DraggableIdeaCard
@@ -147,12 +127,22 @@ export default function PickerScreen() {
       </View>
 
       <View style={styles.footer}>
-        <BrewMeter progress={round / totalRounds} daypart={daypartWord()} />
+        <Text style={styles.hint}>
+          {reduceMotion ? 'tap a card to read it and pick' : 'tap to read · throw to choose'}
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Just surprise me"
+          onPress={handleSurprise}
+          style={({ pressed }) => [styles.surprise, pressed && { opacity: 0.6 }]}
+        >
+          <Text style={styles.surpriseText}>or let us surprise you →</Text>
+        </Pressable>
       </View>
 
       <IdeaDetailModal
         idea={inspecting}
-        actionLabel="Pick this one 🎯"
+        actionLabel="Pick this one"
         onAction={pickFromModal}
         onClose={() => setInspecting(null)}
       />
@@ -163,55 +153,15 @@ export default function PickerScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  roundBadge: {
-    backgroundColor: surface,
-    borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    ...softShadow,
-    shadowOpacity: 0.08,
-  },
-  roundText: {
-    color: accent,
-    fontWeight: '800',
-    fontSize: 14,
-    letterSpacing: 0.5,
-  },
-  surprisePill: {
-    borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: surface,
-    minHeight: 44,
-    justifyContent: 'center',
-    ...softShadow,
-    shadowOpacity: 0.08,
-  },
-  surpriseText: {
-    fontWeight: '600',
-    color: ink,
-    fontSize: 13,
-  },
-  prompt: {
-    textAlign: 'center',
-    color: inkSoft,
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 14,
-    letterSpacing: 0.2,
+    marginTop: 16,
   },
   arena: {
     flex: 1,
     justifyContent: 'center',
-    gap: 18,
+    gap: 6,
   },
   cardA: {
     alignItems: 'flex-start',
@@ -219,17 +169,31 @@ const styles = StyleSheet.create({
   cardB: {
     alignItems: 'flex-end',
   },
-  vsWrap: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    pointerEvents: 'none',
+  or: {
+    fontFamily: fonts.serifItalic,
+    fontSize: 14,
+    color: inkFaint,
+    textAlign: 'center',
+    marginVertical: 4,
   },
   footer: {
-    paddingBottom: 12,
+    alignItems: 'center',
+    gap: 2,
+    paddingBottom: 16,
+  },
+  hint: {
+    fontFamily: fonts.serifItalic,
+    fontSize: 13,
+    color: inkSoft,
+  },
+  surprise: {
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  surpriseText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: accent,
+    letterSpacing: 0.3,
   },
 });

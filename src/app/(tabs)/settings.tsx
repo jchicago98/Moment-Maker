@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { resetProfileData } from '@/lib/db/database';
 import { useSession } from '@/lib/store/session';
 import { useSettings } from '@/lib/store/settings';
-import { borders, candy, canvas, ink, inkSoft, softShadow, surface } from '@/lib/theme';
+import { accent, borders, capsLabel, fonts, ink, inkFaint, inkHead, inkSoft, line, rule, surface } from '@/lib/theme';
 import { useWeather } from '@/lib/weather';
 
 export default function SettingsScreen() {
@@ -29,7 +29,7 @@ export default function SettingsScreen() {
   const confirmReset = () => {
     Alert.alert(
       'Start fresh?',
-      'This forgets everything the app has learned about your taste. Your scrapbook stays.',
+      'This forgets everything the app has learned about your taste. Your journal stays.',
       [
         { text: 'Keep my profile', style: 'cancel' },
         {
@@ -48,44 +48,48 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container}>
+        <Text style={capsLabel}>The fine print</Text>
         <Text style={styles.title}>Settings</Text>
 
         <View style={styles.card}>
-          <Row label="Sound" hint="Marimba ticks, knocks, and reveals">
+          <Row label="Sound" hint="Felt-piano notes, knocks, and reveals">
             <Switch
               value={soundOn}
               onValueChange={toggleSound}
-              trackColor={{ true: candy.teal.fill, false: '#D8D2C6' }}
-              thumbColor={canvas}
+              trackColor={{ true: accent, false: rule }}
+              thumbColor={ink}
               accessibilityLabel="Toggle sound"
             />
           </Row>
-          <Row label="Haptics" hint="Little bumps that mirror the sound">
-            <Switch
-              value={hapticsOn}
-              onValueChange={toggleHaptics}
-              trackColor={{ true: candy.teal.fill, false: '#D8D2C6' }}
-              thumbColor={canvas}
-              accessibilityLabel="Toggle haptics"
-            />
-          </Row>
-          <Row label="Music" hint="Gentle loops that change with the time of day">
+          <View style={styles.divider} />
+          <Row label="Music" hint="Quiet nocturnes that change with the hour">
             <Switch
               value={musicOn}
               onValueChange={toggleMusic}
               disabled={!soundOn}
-              trackColor={{ true: candy.teal.fill, false: '#D8D2C6' }}
-              thumbColor={canvas}
+              trackColor={{ true: accent, false: rule }}
+              thumbColor={ink}
               accessibilityLabel="Toggle background music"
             />
           </Row>
+          <View style={styles.divider} />
+          <Row label="Haptics" hint="Little bumps that mirror the sound">
+            <Switch
+              value={hapticsOn}
+              onValueChange={toggleHaptics}
+              trackColor={{ true: accent, false: rule }}
+              thumbColor={ink}
+              accessibilityLabel="Toggle haptics"
+            />
+          </Row>
+          <View style={styles.divider} />
           <Row label="Reduce motion" hint="Follows your device's accessibility setting">
-            <Text style={styles.soon}>system</Text>
+            <Text style={styles.quiet}>system</Text>
           </Row>
         </View>
 
         <View style={styles.card}>
-          <Row label="Location" hint="Rough location, only for the weather chip">
+          <Row label="Location" hint="Rough location, only for the weather line">
             {locationStatus === 'granted' ? (
               <Text style={styles.granted}>on</Text>
             ) : (
@@ -103,7 +107,7 @@ export default function SettingsScreen() {
         <Pressable
           accessibilityRole="button"
           onPress={confirmReset}
-          style={({ pressed }) => [styles.resetButton, pressed && { opacity: 0.8 }]}
+          style={({ pressed }) => [styles.resetButton, pressed && { opacity: 0.7 }]}
         >
           <Text style={styles.resetText}>Reset my taste profile</Text>
         </Pressable>
@@ -130,22 +134,25 @@ const styles = StyleSheet.create({
   },
   container: {
     padding: 24,
-    gap: 20,
+    gap: 18,
   },
   title: {
-    fontSize: 30,
-    fontWeight: '700',
-    color: ink,
-    marginTop: 8,
-    letterSpacing: 0.3,
+    fontFamily: fonts.serif,
+    fontSize: 28,
+    color: inkHead,
+    marginTop: -10,
   },
   card: {
-    borderRadius: borders.radius,
     backgroundColor: surface,
-    padding: 18,
-    gap: 16,
-    ...softShadow,
-    shadowOpacity: 0.09,
+    borderWidth: 1,
+    borderColor: line,
+    borderRadius: borders.radius,
+    paddingHorizontal: 18,
+    paddingVertical: 6,
+  },
+  divider: {
+    borderTopWidth: 1,
+    borderTopColor: rule,
   },
   row: {
     flexDirection: 'row',
@@ -153,55 +160,59 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
     minHeight: 44,
+    paddingVertical: 12,
   },
   rowText: {
     flex: 1,
     gap: 2,
   },
   rowLabel: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 15.5,
+    fontWeight: '600',
     color: ink,
     letterSpacing: 0.2,
   },
   rowHint: {
+    fontFamily: fonts.serifItalic,
     fontSize: 13,
     color: inkSoft,
   },
-  soon: {
+  quiet: {
     fontSize: 13,
     fontWeight: '600',
-    color: inkSoft,
+    color: inkFaint,
   },
   granted: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: candy.teal.border,
+    ...capsLabel,
+    color: accent,
   },
   smallButton: {
-    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: line,
+    borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 9,
-    backgroundColor: 'rgba(75, 67, 86, 0.07)',
     minHeight: 44,
     justifyContent: 'center',
   },
   smallButtonText: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '600',
     color: ink,
   },
   resetButton: {
-    backgroundColor: candy.coral.fill,
+    borderWidth: 1,
+    borderColor: accent,
     borderRadius: borders.radius,
-    padding: 17,
+    padding: 16,
     alignItems: 'center',
-    ...softShadow,
-    shadowOpacity: 0.08,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   resetText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: candy.coral.text,
+    fontSize: 14,
+    fontWeight: '600',
+    color: accent,
+    letterSpacing: 0.3,
   },
 });

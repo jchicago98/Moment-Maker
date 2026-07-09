@@ -5,10 +5,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BigButton } from '@/components/BigButton';
 import { Chip } from '@/components/Chip';
-import { IconHalo } from '@/components/IconHalo';
+import { IconBox } from '@/components/IconBox';
 import { hapticReveal } from '@/lib/haptics';
 import { addUserIdea } from '@/lib/momentActions';
-import { borders, ink, inkSoft, softShadow, surface } from '@/lib/theme';
+import { borders, capsLabel, fonts, iconWell, ink, inkHead, line, surface } from '@/lib/theme';
 import { ALL_MOODS, type Energy, type GroupType, type Idea, type Mood } from '@/lib/types';
 
 const ICON_CHOICES = [
@@ -84,7 +84,7 @@ export default function AddIdeaScreen() {
 
   const save = () => {
     if (title.trim().length < 3) {
-      Alert.alert('Almost!', 'Give your idea a name first.');
+      Alert.alert('Almost', 'Give your idea a name first.');
       return;
     }
     if (moods.length === 0) {
@@ -108,19 +108,19 @@ export default function AddIdeaScreen() {
     setDescription('');
     setIcon('✨');
     setMoods([]);
-    Alert.alert('Dealt in! 🎉', 'Your idea joined the deck — and taught us a little about you.', [
-      { text: 'Nice', onPress: () => router.navigate('/') },
+    Alert.alert('Added to the collection', 'It joins the deck — and taught us a little about you.', [
+      { text: 'Lovely', onPress: () => router.navigate('/') },
     ]);
   };
 
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Add your own idea</Text>
-        <Text style={styles.subtitle}>It joins the deck and teaches us what you love.</Text>
+        <Text style={capsLabel}>A contribution of your own</Text>
+        <Text style={styles.title}>Add an idea</Text>
 
         <View style={styles.iconSection}>
-          <IconHalo emoji={icon} size="m" />
+          <IconBox emoji={icon} size="m" />
           <View style={styles.iconGrid}>
             {ICON_CHOICES.map((emoji) => (
               <Pressable
@@ -142,7 +142,7 @@ export default function AddIdeaScreen() {
           <TextInput
             style={styles.input}
             placeholder="Rooftop breakfast picnic"
-            placeholderTextColor="rgba(75, 67, 86, 0.35)"
+            placeholderTextColor="#59524A"
             value={title}
             onChangeText={setTitle}
             maxLength={60}
@@ -155,7 +155,7 @@ export default function AddIdeaScreen() {
           <TextInput
             style={styles.input}
             placeholder="Bring the good jam."
-            placeholderTextColor="rgba(75, 67, 86, 0.35)"
+            placeholderTextColor="#59524A"
             value={description}
             onChangeText={setDescription}
             maxLength={100}
@@ -164,7 +164,7 @@ export default function AddIdeaScreen() {
         </View>
 
         <View style={styles.field}>
-          <Text style={styles.label}>Moods (up to 3)</Text>
+          <Text style={styles.label}>Moods — up to 3</Text>
           <View style={styles.chipRow}>
             {ALL_MOODS.map((mood) => (
               <Chip key={mood} label={mood} selected={moods.includes(mood)} onPress={() => toggleMood(mood)} />
@@ -227,7 +227,7 @@ export default function AddIdeaScreen() {
           </View>
         </View>
 
-        <BigButton label="Deal it in" onPress={save} />
+        <BigButton label="Add to the collection" onPress={save} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -239,66 +239,60 @@ const styles = StyleSheet.create({
   },
   container: {
     padding: 24,
-    gap: 20,
+    gap: 18,
   },
   title: {
-    fontSize: 27,
-    fontWeight: '700',
-    color: ink,
-    marginTop: 8,
-    letterSpacing: 0.3,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: inkSoft,
-    marginTop: -12,
+    fontFamily: fonts.serif,
+    fontSize: 28,
+    color: inkHead,
+    marginTop: -10,
   },
   iconSection: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 16,
     backgroundColor: surface,
+    borderWidth: 1,
+    borderColor: line,
     borderRadius: borders.radius,
-    padding: 18,
-    ...softShadow,
-    shadowOpacity: 0.08,
+    padding: 16,
   },
   iconGrid: {
+    flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 6,
+    gap: 4,
   },
   iconChoice: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconChoiceActive: {
-    backgroundColor: 'rgba(231, 109, 142, 0.18)',
+    backgroundColor: iconWell,
+    borderWidth: 1,
+    borderColor: line,
   },
   iconChoiceText: {
-    fontSize: 20,
+    fontSize: 17,
   },
   field: {
-    gap: 10,
+    gap: 9,
   },
   label: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: ink,
-    letterSpacing: 0.2,
+    ...capsLabel,
   },
   input: {
+    borderWidth: 1,
+    borderColor: line,
     borderRadius: borders.radiusSmall,
     backgroundColor: surface,
-    paddingHorizontal: 16,
+    paddingHorizontal: 15,
     paddingVertical: 13,
-    fontSize: 16,
+    fontSize: 15.5,
     color: ink,
-    ...softShadow,
-    shadowOpacity: 0.06,
   },
   chipRow: {
     flexDirection: 'row',

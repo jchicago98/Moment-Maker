@@ -7,11 +7,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DraggableIdeaCard } from '@/components/DraggableIdeaCard';
 import { IdeaDetailModal } from '@/components/IdeaDetailModal';
-import { VsBadge } from '@/components/VsBadge';
 import { applyPickUpdate, createEmptyProfile } from '@/lib/algorithm/learning';
 import { playDealIn } from '@/lib/audio/soundEngine';
 import { getIdeasByIds, saveProfile } from '@/lib/db/database';
-import { accent, cardTilt, ink, inkSoft, softShadow, surface } from '@/lib/theme';
+import { accent, capsLabel, cardTilt, fonts, inkFaint, inkHead, inkSoft } from '@/lib/theme';
 import { useWeather } from '@/lib/weather';
 import type { Idea, UserProfile } from '@/lib/types';
 
@@ -115,17 +114,13 @@ export default function OnboardingScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Let&apos;s get to know you</Text>
-          <Text style={styles.subtitle}>
-            {reduceMotion ? 'Tap' : 'Throw'} your favorite — {pairs.length} quick picks
-          </Text>
-        </View>
-        <View style={styles.stepBadge}>
-          <Text style={styles.stepText}>
-            {Math.min(step + 1, pairs.length)} / {pairs.length}
-          </Text>
-        </View>
+        <Text style={capsLabel}>
+          Getting acquainted · {Math.min(step + 1, pairs.length)} of {pairs.length}
+        </Text>
+        <Text style={styles.title}>Which sounds more like you?</Text>
+        <Text style={styles.subtitle}>
+          {reduceMotion ? 'Tap a card to read and pick.' : 'Throw your favorite off the page.'}
+        </Text>
       </View>
 
       <View style={styles.arena}>
@@ -142,9 +137,7 @@ export default function OnboardingScreen() {
           />
         </Animated.View>
 
-        <View style={styles.vsWrap}>
-          <VsBadge />
-        </View>
+        <Text style={styles.or}>— or —</Text>
 
         <Animated.View key={`${step}-b`} entering={dealInDelayed} style={styles.cardB}>
           <DraggableIdeaCard
@@ -162,7 +155,7 @@ export default function OnboardingScreen() {
 
       <IdeaDetailModal
         idea={inspecting}
-        actionLabel="Pick this one 🎯"
+        actionLabel="Pick this one"
         onAction={() => pickFromModal([ideaA, ideaB])}
         onClose={() => setInspecting(null)}
       />
@@ -172,7 +165,7 @@ export default function OnboardingScreen() {
         onPress={finish}
         style={({ pressed }) => [styles.skip, pressed && { opacity: 0.6 }]}
       >
-        <Text style={styles.skipText}>Skip for now</Text>
+        <Text style={styles.skipText}>skip for now</Text>
       </Pressable>
     </SafeAreaView>
   );
@@ -181,43 +174,28 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginTop: 12,
-    gap: 12,
+    marginTop: 16,
+    gap: 8,
   },
   title: {
-    fontSize: 23,
-    fontWeight: '700',
-    color: ink,
-    letterSpacing: 0.3,
+    fontFamily: fonts.serif,
+    fontSize: 27,
+    lineHeight: 33,
+    color: inkHead,
   },
   subtitle: {
+    fontFamily: fonts.serifItalic,
     fontSize: 14,
     color: inkSoft,
-    marginTop: 2,
-  },
-  stepBadge: {
-    backgroundColor: surface,
-    borderRadius: 999,
-    paddingHorizontal: 15,
-    paddingVertical: 9,
-    ...softShadow,
-    shadowOpacity: 0.08,
-  },
-  stepText: {
-    color: accent,
-    fontWeight: '800',
-    fontSize: 14,
+    marginTop: -4,
   },
   arena: {
     flex: 1,
     justifyContent: 'center',
-    gap: 18,
+    gap: 6,
   },
   cardA: {
     alignItems: 'flex-start',
@@ -225,15 +203,12 @@ const styles = StyleSheet.create({
   cardB: {
     alignItems: 'flex-end',
   },
-  vsWrap: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    pointerEvents: 'none',
+  or: {
+    fontFamily: fonts.serifItalic,
+    fontSize: 14,
+    color: inkFaint,
+    textAlign: 'center',
+    marginVertical: 4,
   },
   skip: {
     alignSelf: 'center',
@@ -243,8 +218,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   skipText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: inkSoft,
+    color: accent,
+    letterSpacing: 0.3,
   },
 });

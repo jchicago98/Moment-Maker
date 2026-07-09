@@ -25,27 +25,27 @@ This file is the source of truth for building the app. Read it fully before maki
 
 ## 3. Design language (do not drift from this)
 
-> **v2 (current)** — soft-pastel "bird guide" aesthetic, modeled on `birds-guide-app-design.png` (repo root). Replaced the original chunky-ink-border candy look.
+> **v3 (current)** — "Gazette · After Dark": an evening paper read by lamplight. Grown-up, editorial, warm-dark. Replaced the pastel v2 and the chunky candy v1.
 
-- **Canvas**: soft two-stop gradient that shifts with the time of day (morning peach→rose, day cream→pale lavender, dusk apricot→plum haze, night lavender→dusty violet). See `daypartGradient` in `src/lib/theme.ts`.
-- **Ink**: dark plum `#4B4356` (secondary text at 60% opacity). No dark borders anywhere — surfaces are borderless `#FFFBF7` cards with large radii (18–26px) and a soft plum shadow (`softShadow`).
-- **Accent**: pink `#E76D8E`; primary buttons are pills filled with the `#F2709C → #C86DD7` gradient. Mood lists render as pink subtitle text ("cozy · silly · tasty") under titles.
-- **Icon halos**: every idea emoji sits on a circular peach→pink gradient (`IconHalo`) — the signature visual, like specimen thumbnails in a field guide.
-- **Pastel candy palette** (occasional card tints, always paired with a deep same-hue text tone): teal `#DCF2E9`, coral `#FBE3D8`, purple `#E9E4F9`, amber `#FCEBCF`, pink `#F9DEE8`.
-- **Layout signature**: the two picker cards are **dealt diagonally** (top-left and bottom-right) with opposite ±4° tilts and a soft white "vs" badge at the crossing point. Tilt never exceeds 5° (legibility). Card faces are minimal: halo + name; details live in the tap-to-peek modal.
-- **Navigation**: floating rounded icon-only tab bar, hidden during quizzes/ceremonies.
-- **Motion**: bouncy spring easings (`cubic-bezier(0.2, 1.4, 0.4, 1)` feel), cards "deal in" from below, gentle "breathe" idle animations on tappable hero elements. Respect the OS reduce-motion setting.
-- Typography: light and airy — weights 600–700 for titles (never 800+), slight letter-spacing, sentence case everywhere; copy is warm and brief ("Your evening is brewing…", "Throw one to pick!").
+- **Ground**: warm near-black `#191613`, flat, tinted almost imperceptibly by the time of day (`daypartGround` in `src/lib/theme.ts`). Status bar light.
+- **Text**: cream `#EAE3D6` (headlines `#F0EADD`, secondary `#96897A`, faint `#6E675C`). **Accent**: ember red `#C25B4E` — links, stars, progress, active states. Nothing else gets color.
+- **Surfaces**: cards `#211E19` with 1px hairline borders `#37322A`; horizontal rules `#322E27`. No shadows, no gradients — hairlines carry the depth. Radius 6 (cards/buttons, editorial and squared), 10 (icon wells, inputs).
+- **Type**: serif display (**Fraunces**, bundled) for headlines and idea titles; italic serif for descriptions and asides; system sans for buttons/labels/meta. Small-caps utility labels (11px, +1.6 letter-spacing) for datelines, categories, round counters; tabular numerals on anything counted.
+- **Emoji, demoted**: idea emoji appear only as small glyphs in a dark square well (`IconBox`) on list rows; picker cards are text-only (caps category line, serif title, italic one-liner). No emoji in button labels.
+- **Layout signature**: the two picker cards are **dealt diagonally** with opposite ±4° tilts and an italic "— or —" between them. Tilt never exceeds 5° (legibility). Details live in the tap-to-peek modal.
+- **Navigation**: bottom bar of small-caps text labels (Today · Ideas · Add · Journal · More) over a hairline; active = cream with a 2px ember underline. Hidden during quizzes/ceremonies.
+- **Motion**: physics stays bouncy (throws, deal-ins, gift shake) but chrome is still — no idle pulsing. Respect the OS reduce-motion setting.
+- Copy: warm, brief, lowercase-leaning for hints ("tap to read · throw to choose"); the scrapbook is called the **journal**.
 
 ## 4. Sound & haptics (core identity, not polish)
 
-- **No white noise / whooshes.** The sound palette is **marimba + soft woodblock** — cozy, musical, Animal Crossing-adjacent.
-- **Drag sound**: while a card is being dragged, play short marimba ticks whose **rate and pitch scale with drag velocity** (slow drag = sparse low plinks; fast fling = rapid rising flurry). Use a pentatonic scale so any sequence sounds pleasant. Quantize tick pitches to the key of the current background music.
-- Pickup = soft woodblock tap. Locked-in throw = quick two-note rising marimba. Reveal = ascending three-note melody resolving into a soft chord.
-- **Gift shake** = 3–4 quick woodblock knocks (the gift "knocking from inside").
+- **No white noise / whooshes.** The sound palette is **felt piano + a woody knock** — quiet, warm, lamplit.
+- **Drag sound**: while a card is being dragged, play soft felt-piano notes whose **rate and pitch scale with drag velocity** (slow drag = sparse low notes; fast fling = a rising run). Pentatonic scale, in key with the background music.
+- Pickup = a low felt tap. Locked-in throw = quick two-note rise. Reveal = ascending three notes resolving into a warm low chord.
+- **Gift shake** = 3–4 quick woody knocks (the gift "knocking from inside").
 - Haptics mirror sound: light impact on pickup, medium on throw, success notification on reveal. Scale haptic intensity with throw velocity where the platform allows.
-- Background music: gentle loops that change by time of day (morning / day / dusk / night). Ship with placeholder loops; keep them quiet and toggleable. All sound has a global mute in settings.
-- Implementation: pre-load short samples (marimba notes across the scale, woodblock, chord) with expo-audio; do not synthesize at runtime.
+- Background music: slow felt-piano **nocturnes** that change by time of day (morning / day / dusk / night). Placeholder loops generated by `scripts/generate-sounds.mjs`; quiet and toggleable. All sound has a global mute in settings.
+- Implementation: pre-load short samples with expo-audio; do not synthesize at runtime. (Historical note: pitched-note files are named `marimba-XX.wav` from v1.)
 
 ## 5. Screens & flow
 

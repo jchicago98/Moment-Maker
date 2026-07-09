@@ -9,7 +9,8 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 
-import { candyOrder } from '@/lib/theme';
+// Muted celebration set: ember, cream, old gold, warm gray.
+const PIECE_COLORS = ['#C25B4E', '#EAE3D6', '#A98850', '#96897A'];
 
 interface PieceConfig {
   angle: number; // radians, mostly upward
@@ -45,7 +46,7 @@ export function ConfettiBurst({ count = 28, durationMs = 1300 }: Props) {
         rotation: (Math.random() - 0.5) * 900,
         width: 7 + Math.random() * 6,
         height: 5 + Math.random() * 9,
-        color: candyOrder[i % candyOrder.length].fill,
+        color: PIECE_COLORS[i % PIECE_COLORS.length],
         round: i % 4 === 0,
       })),
     [count]

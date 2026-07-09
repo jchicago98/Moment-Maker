@@ -1,60 +1,56 @@
-// Moment Maker design language v2 — soft-pastel "bird guide" aesthetic.
-// Gradient canvases, borderless surface cards with gentle shadows, circular
-// gradient halos behind emoji, airy plum typography, pink accents.
-// See CLAUDE.md §3. Do not drift from this.
+// Moment Maker design language v3 — "Gazette · After Dark".
+// An evening paper read by lamplight: warm near-black ground, cream serif
+// headlines, hairline-bordered surfaces, one ember-red accent. No gradients,
+// no shadows, no bounce-for-its-own-sake. See CLAUDE.md §3.
 
-export const ink = '#4B4356'; // dark plum — all primary text
-export const inkSoft = 'rgba(75, 67, 86, 0.6)'; // secondary text
-export const surface = '#FFFBF7'; // card/bar background
-export const canvas = '#FBEFE9'; // fallback flat background (gradients preferred)
+import type { TextStyle } from 'react-native';
 
-export const accent = '#E76D8E'; // pink accent — links, highlights, selection
-export const accentGradient = ['#F2709C', '#C86DD7'] as const; // primary buttons
-export const haloGradient = ['#FFE7D4', '#F6D3E6'] as const; // emoji halos
+// Ground & text
+export const ground = '#191613'; // warm near-black
+export const ink = '#EAE3D6'; // cream — primary text
+export const inkHead = '#F0EADD'; // headlines, a touch brighter
+export const inkSoft = '#96897A'; // secondary
+export const inkFaint = '#6E675C'; // tertiary/hints
 
-export interface CandyColor {
-  fill: string; // soft pastel card tint
-  border: string; // deep accent tone of the same hue (chips, links, badges)
-  text: string; // readable text on the fill
-}
+// Surfaces
+export const surface = '#211E19'; // cards, sheets, tab bar rows
+export const surfaceDeep = '#14120F'; // tab bar
+export const line = '#37322A'; // 1px card hairlines
+export const rule = '#322E27'; // horizontal rules, progress tracks
+export const iconWell = '#241F1A'; // IconBox background
 
-export const candy: Record<string, CandyColor> = {
-  teal: { fill: '#DCF2E9', border: '#3E8E75', text: '#2C6B57' },
-  coral: { fill: '#FBE3D8', border: '#C96F4A', text: '#8F4A2D' },
-  purple: { fill: '#E9E4F9', border: '#7B6BC4', text: '#564A93' },
-  amber: { fill: '#FCEBCF', border: '#C08A2D', text: '#8A6120' },
-  pink: { fill: '#F9DEE8', border: '#CD5E85', text: '#9C3F62' },
-};
+// Accent
+export const accent = '#C25B4E'; // ember red — links, stars, progress, active
+export const warnFill = '#3A2620'; // bad-weather chip ground
+export const warnText = '#D98B76';
 
-export const candyOrder: CandyColor[] = [
-  candy.teal,
-  candy.coral,
-  candy.purple,
-  candy.amber,
-  candy.pink,
-];
-
-export const borders = {
-  width: 0, // v2: cards are borderless; kept for the rare hairline
-  radius: 26,
-  radiusSmall: 18,
+// Type
+export const fonts = {
+  serif: 'Fraunces_500Medium',
+  serifSemi: 'Fraunces_600SemiBold',
+  serifItalic: 'Fraunces_400Regular_Italic',
 } as const;
 
-/** The soft drop shadow every floating surface wears. Plain const (not
- * ViewStyle) so it can spread into Text/TextInput styles too. */
-export const softShadow = {
-  shadowColor: '#6C5A7A',
-  shadowOpacity: 0.14,
-  shadowRadius: 14,
-  shadowOffset: { width: 0, height: 8 },
-  elevation: 5,
+/** Small-caps utility label — datelines, categories, round counters. */
+export const capsLabel: TextStyle = {
+  fontSize: 11,
+  letterSpacing: 1.6,
+  textTransform: 'uppercase',
+  color: inkSoft,
+  fontWeight: '600',
+};
+
+export const borders = {
+  width: 1, // hairlines carry the depth — no shadows
+  radius: 6, // editorial, squared
+  radiusSmall: 10, // icon boxes, inputs
 } as const;
 
 export const cardTilt = 4; // degrees, never exceed 5
 
 // ---------------------------------------------------------------------------
-// Time-of-day theming: the gradient canvas warms and cools with the clock,
-// synced with the adaptive music.
+// Time-of-day theming: the lamplight shifts almost imperceptibly with the
+// clock, synced with the nocturne loops.
 
 export type Daypart = 'morning' | 'day' | 'dusk' | 'night';
 
@@ -66,16 +62,9 @@ export function daypartOf(date: Date = new Date()): Daypart {
   return 'night';
 }
 
-export const daypartGradient: Record<Daypart, readonly [string, string]> = {
-  morning: ['#FDEBDA', '#F8E0EA'], // peach → rose
-  day: ['#FBF0E7', '#F0E5F5'], // cream → pale lavender
-  dusk: ['#FBE3D2', '#E9DBF1'], // apricot → plum haze
-  night: ['#EAE6F4', '#DCD4EC'], // lavender → dusty violet
-};
-
-export const daypartEmoji: Record<Daypart, string> = {
-  morning: '🌅',
-  day: '☀️',
-  dusk: '🌆',
-  night: '🌙',
+export const daypartGround: Record<Daypart, string> = {
+  morning: '#1A1713',
+  day: '#191613',
+  dusk: '#1B1512',
+  night: '#161411',
 };

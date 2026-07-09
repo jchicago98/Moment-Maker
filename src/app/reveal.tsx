@@ -17,15 +17,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BigButton } from '@/components/BigButton';
 import { ConfettiBurst } from '@/components/ConfettiBurst';
-import { IconHalo } from '@/components/IconHalo';
 import { ScheduleSheet } from '@/components/ScheduleSheet';
 import { playDealIn, playGiftKnock, playRevealMelody } from '@/lib/audio/soundEngine';
 import { daypartWord } from '@/lib/daypart';
 import { hapticReveal } from '@/lib/haptics';
-import { iconEmoji } from '@/lib/icons';
 import { createMoment } from '@/lib/momentActions';
 import { useSession } from '@/lib/store/session';
-import { accent, borders, ink, inkSoft, softShadow, surface } from '@/lib/theme';
+import { accent, borders, capsLabel, fonts, ink, inkHead, inkSoft, line, surface } from '@/lib/theme';
 
 function durationLabel(min: number): string {
   if (min < 60) return `${min} min`;
@@ -55,7 +53,7 @@ export default function RevealScreen() {
     playRevealMelody();
   };
 
-  // "Let's do it!" → pick a date & time, then it becomes the pending moment.
+  // "Let's do it" → pick a date & time, then it becomes the pending moment.
   const confirmSchedule = (date: Date | null) => {
     setScheduling(false);
     createMoment(idea, date);
@@ -82,9 +80,9 @@ export default function RevealScreen() {
           <ScrollView contentContainerStyle={styles.revealContainer}>
             <Animated.Text
               entering={reduceMotion ? FadeIn : FadeInUp.springify()}
-              style={styles.revealTitle}
+              style={capsLabel}
             >
-              Your {daypart}, brewed ✨
+              The evening edition
             </Animated.Text>
 
             <Animated.View
@@ -92,21 +90,20 @@ export default function RevealScreen() {
               entering={reduceMotion ? FadeIn : FadeInUp.delay(250).springify().damping(13)}
               style={styles.ideaCard}
             >
-              <IconHalo emoji={iconEmoji(idea.icon)} size="l" />
-              <Text style={styles.ideaTitle}>{idea.title}</Text>
-              <Text style={styles.moods}>{idea.moods.join(' · ')}</Text>
-              <Text style={styles.ideaTip}>{idea.description}</Text>
               <Text style={styles.meta}>
-                {durationLabel(idea.durationMin)} ·{' '}
+                {idea.moods.join(' · ')} · {durationLabel(idea.durationMin)} ·{' '}
                 {idea.costTier === 0 ? 'free' : '$'.repeat(idea.costTier)}
               </Text>
+              <Text style={styles.ideaTitle}>{idea.title}</Text>
+              <View style={styles.cardRule} />
+              <Text style={styles.ideaTip}>{idea.description}</Text>
             </Animated.View>
 
             <Animated.View
               entering={reduceMotion ? FadeIn : FadeInUp.delay(600).springify()}
               style={styles.buttons}
             >
-              <BigButton label="Let's do it! 🎉" onPress={() => setScheduling(true)} breathe />
+              <BigButton label="Let's do it" onPress={() => setScheduling(true)} />
               {runnerUp && !rerolled && (
                 <BigButton label="Maybe another" variant="ghost" onPress={maybeAnother} />
               )}
@@ -115,7 +112,7 @@ export default function RevealScreen() {
                 onPress={notTonight}
                 style={({ pressed }) => [styles.notTonight, pressed && { opacity: 0.6 }]}
               >
-                <Text style={styles.notTonightText}>Not tonight</Text>
+                <Text style={styles.notTonightText}>not tonight</Text>
               </Pressable>
             </Animated.View>
           </ScrollView>
@@ -153,7 +150,7 @@ function GiftBox({ daypart, reduceMotion, onOpened }: GiftBoxProps) {
     if (reduceMotion) return;
     breathe.value = withRepeat(
       withSequence(
-        withTiming(1.06, { duration: 1100, easing: Easing.inOut(Easing.quad) }),
+        withTiming(1.05, { duration: 1100, easing: Easing.inOut(Easing.quad) }),
         withTiming(1, { duration: 1100, easing: Easing.inOut(Easing.quad) })
       ),
       -1
@@ -171,7 +168,7 @@ function GiftBox({ daypart, reduceMotion, onOpened }: GiftBoxProps) {
   const open = () => {
     if (opening) return;
     setOpening(true);
-    playGiftKnock(); // 3–4 woodblock knocks — the gift knocking from inside
+    playGiftKnock(); // 3–4 quick knocks — the gift knocking from inside
 
     if (reduceMotion) {
       onOpened();
@@ -213,9 +210,9 @@ function GiftBox({ daypart, reduceMotion, onOpened }: GiftBoxProps) {
       <View style={styles.brewedBadge}>
         <Text style={styles.brewedText}>100% brewed</Text>
       </View>
-      <Text style={styles.readyTitle}>Your {daypart} is ready</Text>
+      <Text style={styles.readyTitle}>Your {daypart} is ready.</Text>
       <Animated.Text style={[styles.gift, giftStyle]}>🎁</Animated.Text>
-      <Text style={styles.tapHint}>Tap to open</Text>
+      <Text style={styles.tapHint}>tap to open</Text>
     </Pressable>
   );
 }
@@ -232,84 +229,66 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   brewedBadge: {
+    borderWidth: 1,
+    borderColor: line,
     backgroundColor: surface,
-    borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 9,
-    ...softShadow,
-    shadowOpacity: 0.1,
+    borderRadius: borders.radius,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   brewedText: {
+    ...capsLabel,
     color: accent,
-    fontWeight: '800',
-    fontSize: 13,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
   },
   readyTitle: {
-    fontSize: 27,
-    fontWeight: '700',
-    color: ink,
+    fontFamily: fonts.serif,
+    fontSize: 30,
+    lineHeight: 37,
+    color: inkHead,
     textAlign: 'center',
-    letterSpacing: 0.3,
   },
   gift: {
-    fontSize: 110,
+    fontSize: 100,
     marginVertical: 12,
   },
   tapHint: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontFamily: fonts.serifItalic,
+    fontSize: 14,
     color: inkSoft,
   },
   revealContainer: {
     flexGrow: 1,
     padding: 26,
     justifyContent: 'center',
-    gap: 20,
-  },
-  revealTitle: {
-    fontSize: 25,
-    fontWeight: '700',
-    color: ink,
-    textAlign: 'center',
-    letterSpacing: 0.3,
+    gap: 18,
   },
   ideaCard: {
     backgroundColor: surface,
+    borderWidth: 1,
+    borderColor: line,
     borderRadius: borders.radius,
-    padding: 26,
-    alignItems: 'center',
-    gap: 8,
-    ...softShadow,
-  },
-  ideaTitle: {
-    fontSize: 23,
-    fontWeight: '700',
-    color: ink,
-    textAlign: 'center',
-    lineHeight: 30,
-    letterSpacing: 0.2,
-    marginTop: 6,
-  },
-  moods: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: accent,
-    letterSpacing: 0.4,
-  },
-  ideaTip: {
-    fontSize: 15,
-    lineHeight: 22,
-    textAlign: 'center',
-    color: inkSoft,
-    marginTop: 2,
+    padding: 24,
+    gap: 10,
   },
   meta: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: inkSoft,
-    marginTop: 4,
+    ...capsLabel,
+    fontSize: 10.5,
+  },
+  ideaTitle: {
+    fontFamily: fonts.serif,
+    fontSize: 29,
+    lineHeight: 36,
+    color: inkHead,
+  },
+  cardRule: {
+    borderTopWidth: 1,
+    borderTopColor: line,
+  },
+  ideaTip: {
+    fontFamily: fonts.serifItalic,
+    fontSize: 16,
+    lineHeight: 25,
+    color: ink,
   },
   buttons: {
     gap: 10,
@@ -321,8 +300,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   notTonightText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: inkSoft,
+    letterSpacing: 0.3,
   },
 });

@@ -4,7 +4,7 @@ import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native
 
 import { BigButton } from '@/components/BigButton';
 import { Chip } from '@/components/Chip';
-import { accent, borders, ink, inkSoft, softShadow, surface } from '@/lib/theme';
+import { borders, capsLabel, fonts, iconWell, ink, inkFaint, inkHead, inkSoft, line, surface } from '@/lib/theme';
 
 interface Props {
   visible: boolean;
@@ -75,6 +75,7 @@ export function ScheduleSheet({ visible, ideaTitle, initial, onConfirm, onClose 
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close scheduling">
         <Pressable onPress={() => {}} style={styles.sheet}>
+          <Text style={capsLabel}>Setting the scene</Text>
           <Text style={styles.title}>When are we doing this?</Text>
           <Text style={styles.subtitle} numberOfLines={1}>
             {ideaTitle}
@@ -97,7 +98,7 @@ export function ScheduleSheet({ visible, ideaTitle, initial, onConfirm, onClose 
             onPress={() => setShowTimePicker(true)}
             style={({ pressed }) => [styles.timeButton, pressed && { opacity: 0.7 }]}
           >
-            <Text style={styles.timeLabel}>🕰 {timeLabel}</Text>
+            <Text style={styles.timeLabel}>{timeLabel}</Text>
             <Text style={styles.timeHint}>tap to change</Text>
           </Pressable>
 
@@ -106,12 +107,13 @@ export function ScheduleSheet({ visible, ideaTitle, initial, onConfirm, onClose 
               value={selected}
               mode="time"
               display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              themeVariant="dark"
               onChange={onTimeChange}
             />
           )}
 
           <View style={styles.buttons}>
-            <BigButton label="Lock it in ✨" onPress={() => onConfirm(selected)} />
+            <BigButton label="Lock it in" onPress={() => onConfirm(selected)} />
             <Pressable
               accessibilityRole="button"
               onPress={() => onConfirm(null)}
@@ -129,28 +131,29 @@ export function ScheduleSheet({ visible, ideaTitle, initial, onConfirm, onClose 
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(75, 67, 86, 0.45)',
+    backgroundColor: 'rgba(10, 8, 6, 0.72)',
     justifyContent: 'flex-end',
   },
   sheet: {
     backgroundColor: surface,
-    borderTopLeftRadius: borders.radius,
-    borderTopRightRadius: borders.radius,
+    borderTopWidth: 1,
+    borderTopColor: line,
+    borderTopLeftRadius: borders.radius * 2,
+    borderTopRightRadius: borders.radius * 2,
     padding: 26,
     paddingBottom: 34,
     gap: 12,
-    ...softShadow,
   },
   title: {
-    fontSize: 21,
-    fontWeight: '700',
-    color: ink,
-    letterSpacing: 0.2,
+    fontFamily: fonts.serif,
+    fontSize: 24,
+    lineHeight: 30,
+    color: inkHead,
   },
   subtitle: {
+    fontFamily: fonts.serifItalic,
     fontSize: 14,
-    fontWeight: '600',
-    color: accent,
+    color: inkSoft,
     marginTop: -6,
   },
   dayRow: {
@@ -163,7 +166,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(75, 67, 86, 0.06)',
+    backgroundColor: iconWell,
+    borderWidth: 1,
+    borderColor: line,
     borderRadius: borders.radiusSmall,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -171,12 +176,13 @@ const styles = StyleSheet.create({
   },
   timeLabel: {
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: '600',
     color: ink,
+    fontVariant: ['tabular-nums'],
   },
   timeHint: {
-    fontSize: 13,
-    color: inkSoft,
+    fontSize: 12.5,
+    color: inkFaint,
   },
   buttons: {
     gap: 6,
@@ -189,8 +195,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   skipText: {
+    fontFamily: fonts.serifItalic,
     fontSize: 14,
-    fontWeight: '600',
     color: inkSoft,
   },
 });

@@ -6,15 +6,14 @@ See [CLAUDE.md](./CLAUDE.md) for the full product spec, design language, and bui
 
 ## Status
 
-**M1–M5 complete** ✅ · **UX revamp v2** ✅ · **Design v2 + scheduling** ✅
+**M1–M5 complete** ✅ · **UX revamp v2** ✅ · **Scheduling** ✅ · **Design v3 "Gazette · After Dark"** ✅
 
-Latest round (design v2, modeled on `birds-guide-app-design.png`):
+Latest round (design v3, chosen from a mockup board of four directions):
 
-- **Soft-pastel restyle app-wide**: daypart gradient canvases, borderless surface cards with soft plum shadows, circular gradient **icon halos**, airy plum typography, pink accents, gradient primary buttons, floating icon-only tab bar
-- **Minimal quiz cards** (halo + name); the tap-to-peek modal keeps the description + duration/cost/weather + "📍 find nearby" on travel ideas — filter chips gone
-- **Scheduling**: "Let's do it!" asks *when* (day chips + native time picker); home shows the plan ("Today · 7:30 PM"), lets you edit the time or mark it done anytime, and the check-in flips once the scheduled time passes
-- **Browse**: All / **My ideas ✨** shelves, cards open the detail modal, "Do this idea 💫" schedules it into your pending moment
-- **Add idea**: emoji icon picker with live halo preview
+- **Dark editorial restyle app-wide**: warm near-black ground (subtly tinted by the hour), cream serif headlines (Fraunces, bundled), hairline-bordered cards, one ember-red accent, small-caps labels, tabular numerals. Emoji demoted to small glyphs in dark wells on list rows; picker cards are text-only (category line · serif title · italic tip)
+- **Text-label tab bar** (Today · Ideas · Add · Journal · More) with an ember underline; the scrapbook is now the **Journal**
+- **Felt-piano sound**: soft damped notes replace the marimba/flute ticks (rate + pitch still scale with throw velocity), a low felt tap on pickup, a warm low chord on reveal; background music is now four slow felt-piano **nocturnes** cycling with the daypart
+- Everything else unchanged: throw physics, tap-to-peek modal, scheduling ("Today · 7:30 PM", edit time, mark as done, check-in after the scheduled hour), All/My-ideas shelves, emoji icon picker, weather, and the learning algorithm
 
 - Expo (SDK 57) + expo-router + TypeScript strict; 130 seed ideas in `assets/seedIdeas.json`, loaded into SQLite on first launch
 - **Bottom tab bar** (Home · Browse · Add idea · Scrapbook · Settings), hidden during onboarding/setup/picker/reveal

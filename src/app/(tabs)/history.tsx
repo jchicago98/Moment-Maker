@@ -5,18 +5,18 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp, useReducedMotion } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { IconHalo } from '@/components/IconHalo';
+import { IconBox } from '@/components/IconBox';
 import { getDoneMoments, type MomentWithIdea } from '@/lib/db/database';
 import { hapticReveal } from '@/lib/haptics';
 import { iconEmoji } from '@/lib/icons';
 import { pickAndAttachPhoto, rateMoment } from '@/lib/momentActions';
-import { accent, borders, ink, inkSoft, softShadow, surface } from '@/lib/theme';
+import { accent, borders, capsLabel, fonts, inkHead, inkSoft, line, rule, surface } from '@/lib/theme';
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-export default function HistoryScreen() {
+export default function JournalScreen() {
   const reduceMotion = useReducedMotion();
   const [entries, setEntries] = useState<MomentWithIdea[]>([]);
 
@@ -40,14 +40,14 @@ export default function HistoryScreen() {
         keyExtractor={(entry) => entry.moment.id}
         contentContainerStyle={styles.list}
         ListHeaderComponent={
-          <View>
-            <Text style={styles.title}>Scrapbook</Text>
-            <Text style={styles.subtitle}>The moments you actually made 🎉</Text>
+          <View style={styles.header}>
+            <Text style={capsLabel}>A record of evenings well spent</Text>
+            <Text style={styles.title}>The journal</Text>
           </View>
         }
         ListEmptyComponent={
           <Text style={styles.empty}>
-            Nothing here yet — moments land on this shelf once you tell us they happened. 🎁
+            Empty for now — entries appear once you tell us an idea actually happened.
           </Text>
         }
         renderItem={({ item, index }) => {
@@ -63,13 +63,12 @@ export default function HistoryScreen() {
             >
               <View style={styles.card}>
                 <View style={styles.cardBody}>
-                  <IconHalo emoji={iconEmoji(idea.icon)} size="s" />
+                  <IconBox emoji={iconEmoji(idea.icon)} size="s" />
                   <View style={styles.cardTextWrap}>
                     <Text style={styles.cardDate}>
                       {formatDate(moment.confirmedAt ?? moment.createdAt)}
                     </Text>
                     <Text style={styles.cardTitle}>{idea.title}</Text>
-                    <Text style={styles.cardMoods}>{idea.moods.join(' · ')}</Text>
                   </View>
                 </View>
 
@@ -96,7 +95,7 @@ export default function HistoryScreen() {
                         <Text
                           style={[styles.starText, !(rating && stars <= rating) && styles.starDim]}
                         >
-                          ⭐
+                          ★
                         </Text>
                       </Pressable>
                     ))}
@@ -106,9 +105,9 @@ export default function HistoryScreen() {
                       accessibilityRole="button"
                       accessibilityLabel="Add a photo"
                       onPress={() => addPhoto(moment.id)}
-                      style={({ pressed }) => [styles.photoButton, pressed && { opacity: 0.7 }]}
+                      style={({ pressed }) => [styles.photoLink, pressed && { opacity: 0.6 }]}
                     >
-                      <Text style={styles.photoButtonText}>📷 add a photo</Text>
+                      <Text style={styles.photoLinkText}>Add a photograph →</Text>
                     </Pressable>
                   )}
                 </View>
@@ -126,36 +125,35 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   list: {
-    padding: 22,
-    gap: 14,
+    padding: 24,
+    gap: 12,
+  },
+  header: {
+    gap: 8,
+    marginTop: 8,
+    marginBottom: 10,
   },
   title: {
-    fontSize: 30,
-    fontWeight: '700',
-    color: ink,
-    marginTop: 8,
-    letterSpacing: 0.3,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: inkSoft,
-    marginTop: 2,
-    marginBottom: 8,
+    fontFamily: fonts.serif,
+    fontSize: 28,
+    color: inkHead,
+    marginTop: -4,
   },
   empty: {
+    fontFamily: fonts.serifItalic,
     textAlign: 'center',
     color: inkSoft,
     fontSize: 15,
     marginTop: 32,
-    lineHeight: 22,
+    lineHeight: 23,
   },
   card: {
     backgroundColor: surface,
+    borderWidth: 1,
+    borderColor: line,
     borderRadius: borders.radius,
-    padding: 18,
-    gap: 10,
-    ...softShadow,
-    shadowOpacity: 0.09,
+    padding: 16,
+    gap: 12,
   },
   cardBody: {
     flexDirection: 'row',
@@ -164,26 +162,18 @@ const styles = StyleSheet.create({
   },
   cardTextWrap: {
     flex: 1,
-    gap: 2,
+    gap: 3,
   },
   cardDate: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: inkSoft,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    ...capsLabel,
+    fontSize: 10,
+    letterSpacing: 1.2,
   },
   cardTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: ink,
-    lineHeight: 22,
-  },
-  cardMoods: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: accent,
-    letterSpacing: 0.3,
+    fontFamily: fonts.serif,
+    fontSize: 18,
+    lineHeight: 23,
+    color: inkHead,
   },
   photo: {
     height: 150,
@@ -198,28 +188,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   star: {
-    minWidth: 34,
+    minWidth: 32,
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
   starText: {
-    fontSize: 19,
+    fontSize: 18,
+    color: accent,
   },
   starDim: {
-    opacity: 0.22,
+    color: rule,
   },
-  photoButton: {
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: 'rgba(75, 67, 86, 0.06)',
+  photoLink: {
     minHeight: 44,
     justifyContent: 'center',
   },
-  photoButtonText: {
-    fontSize: 12,
+  photoLinkText: {
+    fontSize: 12.5,
     fontWeight: '600',
-    color: ink,
+    color: accent,
+    letterSpacing: 0.3,
   },
 });

@@ -1,15 +1,13 @@
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BigButton } from '@/components/BigButton';
-import { IconHalo } from '@/components/IconHalo';
-import { iconEmoji } from '@/lib/icons';
-import { accent, borders, candy, ink, inkSoft, softShadow, surface } from '@/lib/theme';
+import { accent, borders, capsLabel, fonts, ink, inkHead, inkSoft, line, surface, warnFill, warnText } from '@/lib/theme';
 import { currentChip, currentOutlook } from '@/lib/weather';
 import type { Idea } from '@/lib/types';
 
 interface Props {
   idea: Idea | null; // null = closed
-  /** Primary action ("Pick this one 🎯", "Do this idea 💫"). Omit for read-only. */
+  /** Primary action ("Pick this one", "Do this idea"). Omit for read-only. */
   actionLabel?: string;
   onAction?: () => void;
   onClose: () => void;
@@ -43,19 +41,20 @@ export function IdeaDetailModal({ idea, actionLabel, onAction, onClose }: Props)
             style={styles.card}
           >
             <ScrollView contentContainerStyle={styles.content}>
-              <View style={styles.haloWrap}>
-                <IconHalo emoji={iconEmoji(idea.icon)} size="l" />
-              </View>
+              <Text style={styles.meta}>
+                {idea.moods.join(' · ')} · {durationLabel(idea.durationMin)} ·{' '}
+                {idea.costTier === 0 ? 'free' : '$'.repeat(idea.costTier)}
+              </Text>
               <Text style={styles.title}>{idea.title}</Text>
-              <Text style={styles.moods}>{idea.moods.join(' · ')}</Text>
+              <View style={styles.rule} />
               <Text style={styles.description}>{idea.description}</Text>
 
-              <View style={styles.chipWrap}>
-                <InfoChip text={durationLabel(idea.durationMin)} />
-                <InfoChip text={idea.costTier === 0 ? 'free' : '$'.repeat(idea.costTier)} />
-                {weatherChip && <InfoChip text={weatherChip} />}
-                {badWeather && <InfoChip text="☔ better indoors today" tone="warn" />}
-              </View>
+              {(weatherChip || badWeather) && (
+                <View style={styles.chipWrap}>
+                  {weatherChip && <InfoChip text={weatherChip} />}
+                  {badWeather && <InfoChip text="☔ better indoors today" tone="warn" />}
+                </View>
+              )}
 
               {idea.requiresTravel && (
                 <Pressable
@@ -64,7 +63,7 @@ export function IdeaDetailModal({ idea, actionLabel, onAction, onClose }: Props)
                   onPress={openMap}
                   style={({ pressed }) => [styles.mapLink, pressed && { opacity: 0.6 }]}
                 >
-                  <Text style={styles.mapLinkText}>📍 find nearby</Text>
+                  <Text style={styles.mapLinkText}>Find nearby →</Text>
                 </Pressable>
               )}
 
@@ -91,7 +90,7 @@ function InfoChip({ text, tone = 'neutral' }: { text: string; tone?: 'neutral' |
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(75, 67, 86, 0.45)',
+    backgroundColor: 'rgba(10, 8, 6, 0.72)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
@@ -100,74 +99,71 @@ const styles = StyleSheet.create({
     width: '100%',
     maxHeight: '82%',
     backgroundColor: surface,
+    borderWidth: 1,
+    borderColor: line,
     borderRadius: borders.radius,
-    ...softShadow,
   },
   content: {
     padding: 26,
-    gap: 8,
-    alignItems: 'center',
+    gap: 10,
   },
-  haloWrap: {
-    marginBottom: 4,
+  meta: {
+    ...capsLabel,
+    fontSize: 10.5,
   },
   title: {
-    fontSize: 23,
-    fontWeight: '700',
-    lineHeight: 30,
-    color: ink,
-    textAlign: 'center',
-    letterSpacing: 0.2,
+    fontFamily: fonts.serif,
+    fontSize: 27,
+    lineHeight: 34,
+    color: inkHead,
   },
-  moods: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: accent,
-    letterSpacing: 0.4,
+  rule: {
+    borderTopWidth: 1,
+    borderTopColor: line,
+    marginVertical: 4,
   },
   description: {
-    fontSize: 15,
-    lineHeight: 23,
-    color: inkSoft,
-    textAlign: 'center',
-    marginTop: 4,
+    fontFamily: fonts.serifItalic,
+    fontSize: 16,
+    lineHeight: 25,
+    color: ink,
   },
   chipWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
     gap: 8,
-    marginTop: 10,
+    marginTop: 6,
   },
   chip: {
-    borderRadius: 999,
-    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: line,
+    borderRadius: 8,
+    paddingHorizontal: 11,
     paddingVertical: 6,
-    backgroundColor: 'rgba(75, 67, 86, 0.07)',
   },
   chipWarn: {
-    backgroundColor: candy.coral.fill,
+    backgroundColor: warnFill,
+    borderColor: warnFill,
   },
   chipText: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '600',
-    color: ink,
+    color: inkSoft,
   },
   chipTextWarn: {
-    color: candy.coral.text,
+    color: warnText,
   },
   mapLink: {
-    padding: 8,
     minHeight: 44,
     justifyContent: 'center',
   },
   mapLinkText: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 13.5,
+    fontWeight: '600',
     color: accent,
+    letterSpacing: 0.3,
   },
   buttons: {
-    alignSelf: 'stretch',
     gap: 10,
     marginTop: 12,
   },

@@ -1,4 +1,9 @@
-import { LinearGradient } from 'expo-linear-gradient';
+import {
+  Fraunces_400Regular_Italic,
+  Fraunces_500Medium,
+  Fraunces_600SemiBold,
+  useFonts,
+} from '@expo-google-fonts/fraunces';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
@@ -8,15 +13,21 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { initAudio, updateMusic } from '@/lib/audio/soundEngine';
 import { initDatabase } from '@/lib/db/database';
 import { useSettings } from '@/lib/store/settings';
-import { daypartGradient, daypartOf } from '@/lib/theme';
+import { daypartGround, daypartOf } from '@/lib/theme';
 import { useWeather } from '@/lib/weather';
 
 initDatabase();
 
 export default function RootLayout() {
-  // The gradient canvas warms and cools with the clock (morning peach →
-  // midday cream → dusk apricot → night lavender), re-checked on foreground.
-  const [gradient, setGradient] = useState(() => daypartGradient[daypartOf()]);
+  const [fontsLoaded] = useFonts({
+    Fraunces_400Regular_Italic,
+    Fraunces_500Medium,
+    Fraunces_600SemiBold,
+  });
+
+  // The lamplight shifts almost imperceptibly with the clock, re-checked on
+  // foreground.
+  const [groundColor, setGroundColor] = useState(() => daypartGround[daypartOf()]);
 
   useEffect(() => {
     initAudio();
@@ -24,8 +35,8 @@ export default function RootLayout() {
 
     const appState = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
-        setGradient(daypartGradient[daypartOf()]);
-        updateMusic(); // the loop follows the clock too
+        setGroundColor(daypartGround[daypartOf()]);
+        updateMusic(); // the nocturne follows the clock too
         useWeather.getState().refresh();
       }
     });
@@ -36,10 +47,13 @@ export default function RootLayout() {
     };
   }, []);
 
+  if (!fontsLoaded) {
+    return null; // a beat of ground color while the serif arrives
+  }
+
   return (
-    <GestureHandlerRootView style={styles.root}>
-      <LinearGradient colors={gradient} style={StyleSheet.absoluteFill} />
-      <StatusBar style="dark" />
+    <GestureHandlerRootView style={[styles.root, { backgroundColor: groundColor }]}>
+      <StatusBar style="light" />
       <Stack
         screenOptions={{
           headerShown: false,

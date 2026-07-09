@@ -10,11 +10,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useEffect } from 'react';
 
-import { IconHalo } from '@/components/IconHalo';
 import { playPickup, playThrowLock, playTick } from '@/lib/audio/soundEngine';
 import { hapticPickup, hapticThrow } from '@/lib/haptics';
-import { iconEmoji } from '@/lib/icons';
-import { borders, ink, softShadow, surface } from '@/lib/theme';
+import { borders, capsLabel, fonts, inkHead, inkSoft, line, surface } from '@/lib/theme';
 import type { Idea } from '@/lib/types';
 
 // Lock-in thresholds (CLAUDE.md §5.3): velocity OR displacement wins.
@@ -46,6 +44,17 @@ function pickupFeedback(): void {
 function lockFeedback(intensity: number): void {
   playThrowLock(intensity);
   hapticThrow(intensity);
+}
+
+function durationLabel(min: number): string {
+  if (min < 60) return `${min} min`;
+  if (min % 60 === 0) return `${min / 60} h`;
+  return `${Math.floor(min / 60)}½ h`;
+}
+
+function categoryLine(idea: Idea): string {
+  const cost = idea.costTier === 0 ? 'free' : '$'.repeat(idea.costTier);
+  return `${idea.moods[0]} · ${durationLabel(idea.durationMin)} · ${cost}`;
 }
 
 export function DraggableIdeaCard({
@@ -102,8 +111,8 @@ export function DraggableIdeaCard({
       tx.value = e.translationX;
       ty.value = e.translationY;
 
-      // Marimba ticks: rate and pitch scale with drag velocity — sparse low
-      // plinks for slow drags, a rapid rising flurry for confident flings.
+      // Felt-piano ticks: rate and pitch scale with drag velocity — sparse
+      // low notes for slow drags, a rising run for confident flings.
       const speed = Math.hypot(e.velocityX, e.velocityY);
       const interval = Math.max(70, 400 - speed * 0.15);
       const now = Date.now();
@@ -156,12 +165,13 @@ export function DraggableIdeaCard({
         { translateX: tx.value },
         { translateY: ty.value },
         { rotate: `${tilt + dragTilt}deg` },
-        { scale: withSpring(held.value ? 1.05 : 1, { damping: 14, stiffness: 200 }) },
+        { scale: withSpring(held.value ? 1.04 : 1, { damping: 14, stiffness: 200 }) },
       ],
     };
   });
 
-  // Minimal face: halo + name. Everything else lives in the detail modal.
+  // Editorial face: category line, serif title, italic one-liner. Details
+  // live in the tap-to-peek modal.
   return (
     <GestureDetector gesture={gesture}>
       <Animated.View
@@ -170,9 +180,12 @@ export function DraggableIdeaCard({
         accessibilityLabel={`${idea.title}. Tap to read more, throw off screen to pick.`}
         style={[styles.card, animatedStyle]}
       >
-        <IconHalo emoji={iconEmoji(idea.icon)} size="m" />
+        <Text style={styles.category}>{categoryLine(idea)}</Text>
         <Text style={styles.title} numberOfLines={2}>
           {idea.title}
+        </Text>
+        <Text style={styles.desc} numberOfLines={1}>
+          {idea.description}
         </Text>
       </Animated.View>
     </GestureDetector>
@@ -181,21 +194,28 @@ export function DraggableIdeaCard({
 
 const styles = StyleSheet.create({
   card: {
-    width: '74%',
+    width: '80%',
     backgroundColor: surface,
+    borderWidth: 1,
+    borderColor: line,
     borderRadius: borders.radius,
-    paddingVertical: 20,
+    paddingVertical: 18,
     paddingHorizontal: 18,
-    alignItems: 'center',
-    gap: 12,
-    ...softShadow,
+    gap: 7,
+  },
+  category: {
+    ...capsLabel,
+    fontSize: 10.5,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '700',
-    lineHeight: 24,
-    color: ink,
-    textAlign: 'center',
-    letterSpacing: 0.2,
+    fontFamily: fonts.serif,
+    fontSize: 21,
+    lineHeight: 26,
+    color: inkHead,
+  },
+  desc: {
+    fontFamily: fonts.serifItalic,
+    fontSize: 13.5,
+    color: inkSoft,
   },
 });

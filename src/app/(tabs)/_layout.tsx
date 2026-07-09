@@ -2,14 +2,14 @@ import { Tabs } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { softShadow, surface } from '@/lib/theme';
+import { accent, ink, inkFaint, line, surfaceDeep } from '@/lib/theme';
 
-const TAB_META: Record<string, { icon: string; label: string }> = {
-  index: { icon: '🏠', label: 'Home' },
-  browse: { icon: '🧭', label: 'Browse' },
-  'add-idea': { icon: '💡', label: 'Add idea' },
-  history: { icon: '📔', label: 'Scrapbook' },
-  settings: { icon: '⚙️', label: 'Settings' },
+const TAB_LABELS: Record<string, string> = {
+  index: 'Today',
+  browse: 'Ideas',
+  'add-idea': 'Add',
+  history: 'Journal',
+  settings: 'More',
 };
 
 // The slice of @react-navigation/bottom-tabs' BottomTabBarProps we actually
@@ -24,20 +24,20 @@ interface TabBarProps {
   };
 }
 
-// Floating icon-only bar, per the bird-guide reference.
-function FloatingTabBar({ state, navigation }: TabBarProps) {
+// Masthead-footer navigation: small-caps text labels over a hairline.
+function GazetteTabBar({ state, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.bar, { bottom: Math.max(insets.bottom, 12) }]}>
+    <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 10) }]}>
       {state.routes.map((route, index) => {
-        const meta = TAB_META[route.name] ?? { icon: '❔', label: route.name };
+        const label = TAB_LABELS[route.name] ?? route.name;
         const focused = state.index === index;
         return (
           <Pressable
             key={route.key}
             accessibilityRole="tab"
             accessibilityState={{ selected: focused }}
-            accessibilityLabel={meta.label}
+            accessibilityLabel={label}
             onPress={() => {
               const event = navigation.emit({
                 type: 'tabPress',
@@ -50,9 +50,7 @@ function FloatingTabBar({ state, navigation }: TabBarProps) {
             }}
             style={styles.item}
           >
-            <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
-              <Text style={[styles.icon, !focused && styles.iconInactive]}>{meta.icon}</Text>
-            </View>
+            <Text style={[styles.label, focused && styles.labelActive]}>{label}</Text>
           </Pressable>
         );
       })}
@@ -63,12 +61,10 @@ function FloatingTabBar({ state, navigation }: TabBarProps) {
 export default function TabsLayout() {
   return (
     <Tabs
-      tabBar={(props) => <FloatingTabBar {...props} />}
+      tabBar={(props) => <GazetteTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        // Transparent so the daypart gradient shows; padding clears the
-        // floating bar.
-        sceneStyle: { backgroundColor: 'transparent', paddingBottom: 86 },
+        sceneStyle: { backgroundColor: 'transparent' },
       }}
     >
       <Tabs.Screen name="index" />
@@ -82,36 +78,29 @@ export default function TabsLayout() {
 
 const styles = StyleSheet.create({
   bar: {
-    position: 'absolute',
-    left: 20,
-    right: 20,
     flexDirection: 'row',
-    backgroundColor: surface,
-    borderRadius: 30,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    ...softShadow,
+    backgroundColor: surfaceDeep,
+    borderTopWidth: 1,
+    borderTopColor: line,
+    paddingTop: 14,
+    paddingHorizontal: 8,
   },
   item: {
     flex: 1,
     alignItems: 'center',
-    minHeight: 44,
-    justifyContent: 'center',
+    minHeight: 40,
   },
-  iconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
+  label: {
+    fontSize: 10.5,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    fontWeight: '600',
+    color: inkFaint,
+    paddingBottom: 4,
   },
-  iconWrapActive: {
-    backgroundColor: 'rgba(231, 109, 142, 0.16)',
-  },
-  icon: {
-    fontSize: 21,
-  },
-  iconInactive: {
-    opacity: 0.55,
+  labelActive: {
+    color: ink,
+    borderBottomWidth: 2,
+    borderBottomColor: accent,
   },
 });

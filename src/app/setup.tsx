@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BigButton } from '@/components/BigButton';
 import { Chip } from '@/components/Chip';
 import { useSession } from '@/lib/store/session';
-import { ink } from '@/lib/theme';
+import { capsLabel, fonts, inkHead, inkSoft } from '@/lib/theme';
 import type { CostTier, GroupType } from '@/lib/types';
 
 const groups: { value: GroupType; label: string }[] = [
@@ -48,8 +48,8 @@ export default function SetupScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Set the scene</Text>
-        <Text style={styles.subtitle}>Three quick questions, then we deal the cards.</Text>
+        <Text style={capsLabel}>Setting the scene</Text>
+        <Text style={styles.title}>Three quick questions.</Text>
 
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>{"Who's playing?"}</Text>
@@ -94,13 +94,13 @@ export default function SetupScreen() {
         </View>
 
         <View style={styles.footer}>
-          <BigButton label="Deal me in 🃏" onPress={dealMeIn} breathe />
+          <BigButton label="Deal me in" onPress={dealMeIn} />
           <Pressable
             accessibilityRole="button"
             onPress={() => router.back()}
             style={({ pressed }) => [styles.backLink, pressed && { opacity: 0.6 }]}
           >
-            <Text style={styles.backText}>Never mind</Text>
+            <Text style={styles.backText}>never mind</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -113,35 +113,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   container: {
-    padding: 24,
-    gap: 24,
+    padding: 26,
+    gap: 22,
   },
   title: {
+    fontFamily: fonts.serif,
     fontSize: 30,
-    fontWeight: '700',
-    color: ink,
-    marginTop: 12,
-    letterSpacing: 0.3,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: ink,
-    opacity: 0.6,
-    marginTop: -16,
+    lineHeight: 37,
+    color: inkHead,
+    marginTop: -12,
   },
   section: {
-    gap: 12,
+    gap: 11,
   },
   sectionLabel: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: ink,
-    letterSpacing: 0.2,
+    ...capsLabel,
   },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 9,
   },
   footer: {
     marginTop: 12,
@@ -154,9 +145,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   backText: {
+    fontFamily: fonts.serifItalic,
     fontSize: 14,
-    fontWeight: '600',
-    color: ink,
-    opacity: 0.5,
+    color: inkSoft,
   },
 });
