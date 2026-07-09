@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
@@ -7,15 +8,15 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { initAudio, updateMusic } from '@/lib/audio/soundEngine';
 import { initDatabase } from '@/lib/db/database';
 import { useSettings } from '@/lib/store/settings';
-import { daypartCanvas, daypartOf } from '@/lib/theme';
+import { daypartGradient, daypartOf } from '@/lib/theme';
 import { useWeather } from '@/lib/weather';
 
 initDatabase();
 
 export default function RootLayout() {
-  // The canvas warms and cools with the clock (morning peach → midday cream →
-  // dusk orange → night lavender-blue), re-checked whenever we come foreground.
-  const [canvasColor, setCanvasColor] = useState(() => daypartCanvas[daypartOf()]);
+  // The gradient canvas warms and cools with the clock (morning peach →
+  // midday cream → dusk apricot → night lavender), re-checked on foreground.
+  const [gradient, setGradient] = useState(() => daypartGradient[daypartOf()]);
 
   useEffect(() => {
     initAudio();
@@ -23,7 +24,7 @@ export default function RootLayout() {
 
     const appState = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
-        setCanvasColor(daypartCanvas[daypartOf()]);
+        setGradient(daypartGradient[daypartOf()]);
         updateMusic(); // the loop follows the clock too
         useWeather.getState().refresh();
       }
@@ -37,11 +38,12 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={styles.root}>
+      <LinearGradient colors={gradient} style={StyleSheet.absoluteFill} />
       <StatusBar style="dark" />
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: canvasColor },
+          contentStyle: { backgroundColor: 'transparent' },
           animation: 'fade',
         }}
       />

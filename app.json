@@ -46,7 +46,8 @@
         {
           "photosPermission": "Moment Maker lets you attach a photo to completed plans in your scrapbook."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

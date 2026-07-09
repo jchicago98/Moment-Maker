@@ -1,14 +1,21 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BigButton } from '@/components/BigButton';
 import { Chip } from '@/components/Chip';
+import { IconHalo } from '@/components/IconHalo';
 import { hapticReveal } from '@/lib/haptics';
 import { addUserIdea } from '@/lib/momentActions';
-import { borders, canvas, ink } from '@/lib/theme';
+import { borders, ink, inkSoft, softShadow, surface } from '@/lib/theme';
 import { ALL_MOODS, type Energy, type GroupType, type Idea, type Mood } from '@/lib/types';
+
+const ICON_CHOICES = [
+  '✨', '🍕', '🎨', '🎬', '🥾', '🎲', '📚', '🎤',
+  '🧺', '🌅', '🏕️', '🍦', '🎮', '🌊', '🚴', '📸',
+  '🎭', '🧘', '🍰', '🌮', '🎳', '🛶', '🌸', '🔥',
+];
 
 const settings: { value: Idea['setting']; label: string }[] = [
   { value: 'indoor', label: 'Indoors' },
@@ -47,6 +54,7 @@ export default function AddIdeaScreen() {
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [icon, setIcon] = useState('✨');
   const [moods, setMoods] = useState<Mood[]>([]);
   const [setting, setSetting] = useState<Idea['setting']>('either');
   const [costTier, setCostTier] = useState<Idea['costTier']>(0);
@@ -86,6 +94,7 @@ export default function AddIdeaScreen() {
     addUserIdea({
       title: title.trim(),
       description: description.trim() || 'Your idea, your rules.',
+      icon,
       moods,
       setting,
       costTier,
@@ -94,9 +103,10 @@ export default function AddIdeaScreen() {
       energy,
     });
     hapticReveal();
-    // It's a tab now: clear the form for next time and hop back to home.
+    // It's a tab: clear the form for next time and hop back to home.
     setTitle('');
     setDescription('');
+    setIcon('✨');
     setMoods([]);
     Alert.alert('Dealt in! 🎉', 'Your idea joined the deck — and taught us a little about you.', [
       { text: 'Nice', onPress: () => router.navigate('/') },
@@ -109,12 +119,30 @@ export default function AddIdeaScreen() {
         <Text style={styles.title}>Add your own idea</Text>
         <Text style={styles.subtitle}>It joins the deck and teaches us what you love.</Text>
 
+        <View style={styles.iconSection}>
+          <IconHalo emoji={icon} size="m" />
+          <View style={styles.iconGrid}>
+            {ICON_CHOICES.map((emoji) => (
+              <Pressable
+                key={emoji}
+                accessibilityRole="button"
+                accessibilityLabel={`Use ${emoji} as the icon`}
+                accessibilityState={{ selected: icon === emoji }}
+                onPress={() => setIcon(emoji)}
+                style={[styles.iconChoice, icon === emoji && styles.iconChoiceActive]}
+              >
+                <Text style={styles.iconChoiceText}>{emoji}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
         <View style={styles.field}>
           <Text style={styles.label}>What is it?</Text>
           <TextInput
             style={styles.input}
             placeholder="Rooftop breakfast picnic"
-            placeholderTextColor="#B8B0A0"
+            placeholderTextColor="rgba(75, 67, 86, 0.35)"
             value={title}
             onChangeText={setTitle}
             maxLength={60}
@@ -127,7 +155,7 @@ export default function AddIdeaScreen() {
           <TextInput
             style={styles.input}
             placeholder="Bring the good jam."
-            placeholderTextColor="#B8B0A0"
+            placeholderTextColor="rgba(75, 67, 86, 0.35)"
             value={description}
             onChangeText={setDescription}
             maxLength={100}
@@ -214,34 +242,63 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '900',
+    fontSize: 27,
+    fontWeight: '700',
     color: ink,
     marginTop: 8,
+    letterSpacing: 0.3,
   },
   subtitle: {
     fontSize: 15,
-    color: ink,
-    opacity: 0.65,
+    color: inkSoft,
     marginTop: -12,
+  },
+  iconSection: {
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: surface,
+    borderRadius: borders.radius,
+    padding: 18,
+    ...softShadow,
+    shadowOpacity: 0.08,
+  },
+  iconGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  iconChoice: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconChoiceActive: {
+    backgroundColor: 'rgba(231, 109, 142, 0.18)',
+  },
+  iconChoiceText: {
+    fontSize: 20,
   },
   field: {
     gap: 10,
   },
   label: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '700',
     color: ink,
+    letterSpacing: 0.2,
   },
   input: {
-    borderWidth: borders.width,
-    borderColor: ink,
     borderRadius: borders.radiusSmall,
-    backgroundColor: canvas,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    backgroundColor: surface,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
     fontSize: 16,
     color: ink,
+    ...softShadow,
+    shadowOpacity: 0.06,
   },
   chipRow: {
     flexDirection: 'row',

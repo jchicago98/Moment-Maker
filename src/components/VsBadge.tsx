@@ -1,36 +1,29 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { canvas, ink } from '@/lib/theme';
+import { accent, softShadow, surface } from '@/lib/theme';
 
 export function VsBadge() {
   return (
     <View style={styles.badge} pointerEvents="none">
-      <Text style={styles.text}>VS</Text>
+      <Text style={styles.text}>vs</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   badge: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: ink,
-    borderWidth: 3,
-    borderColor: canvas,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: surface,
     alignItems: 'center',
     justifyContent: 'center',
-    transform: [{ rotate: '-6deg' }],
-    shadowColor: ink,
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 5,
+    ...softShadow,
   },
   text: {
-    color: canvas,
-    fontSize: 18,
-    fontWeight: '900',
-    letterSpacing: 1,
+    color: accent,
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
 });

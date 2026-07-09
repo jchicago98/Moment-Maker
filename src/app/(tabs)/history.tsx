@@ -5,11 +5,12 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp, useReducedMotion } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { IconHalo } from '@/components/IconHalo';
 import { getDoneMoments, type MomentWithIdea } from '@/lib/db/database';
 import { hapticReveal } from '@/lib/haptics';
 import { iconEmoji } from '@/lib/icons';
 import { pickAndAttachPhoto, rateMoment } from '@/lib/momentActions';
-import { borders, candyOrder, ink } from '@/lib/theme';
+import { accent, borders, ink, inkSoft, softShadow, surface } from '@/lib/theme';
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
@@ -41,7 +42,7 @@ export default function HistoryScreen() {
         ListHeaderComponent={
           <View>
             <Text style={styles.title}>Scrapbook</Text>
-            <Text style={styles.subtitle}>The moments you actually made. 🎉</Text>
+            <Text style={styles.subtitle}>The moments you actually made 🎉</Text>
           </View>
         }
         ListEmptyComponent={
@@ -50,7 +51,6 @@ export default function HistoryScreen() {
           </Text>
         }
         renderItem={({ item, index }) => {
-          const color = candyOrder[index % candyOrder.length];
           const { moment, idea } = item;
           const rating = moment.rating;
           return (
@@ -61,24 +61,15 @@ export default function HistoryScreen() {
                   : FadeInUp.delay(Math.min(index, 6) * 70).springify().damping(15)
               }
             >
-              <View
-                style={[styles.card, { backgroundColor: color.fill, borderColor: color.border }]}
-              >
-                <View style={styles.cardHeader}>
-                  <Text style={[styles.cardDate, { color: color.text }]}>
-                    {formatDate(moment.confirmedAt ?? moment.createdAt)}
-                  </Text>
-                  <View style={[styles.doneBadge, { borderColor: color.border }]}>
-                    <Text style={[styles.doneText, { color: color.text }]}>we did it!</Text>
-                  </View>
-                </View>
+              <View style={styles.card}>
                 <View style={styles.cardBody}>
-                  <Text style={styles.cardIcon}>{iconEmoji(idea.icon)}</Text>
+                  <IconHalo emoji={iconEmoji(idea.icon)} size="s" />
                   <View style={styles.cardTextWrap}>
-                    <Text style={[styles.cardTitle, { color: color.text }]}>{idea.title}</Text>
-                    <Text style={[styles.cardTip, { color: color.text }]} numberOfLines={2}>
-                      {idea.description}
+                    <Text style={styles.cardDate}>
+                      {formatDate(moment.confirmedAt ?? moment.createdAt)}
                     </Text>
+                    <Text style={styles.cardTitle}>{idea.title}</Text>
+                    <Text style={styles.cardMoods}>{idea.moods.join(' · ')}</Text>
                   </View>
                 </View>
 
@@ -115,15 +106,9 @@ export default function HistoryScreen() {
                       accessibilityRole="button"
                       accessibilityLabel="Add a photo"
                       onPress={() => addPhoto(moment.id)}
-                      style={({ pressed }) => [
-                        styles.photoButton,
-                        { borderColor: color.border },
-                        pressed && { opacity: 0.7 },
-                      ]}
+                      style={({ pressed }) => [styles.photoButton, pressed && { opacity: 0.7 }]}
                     >
-                      <Text style={[styles.photoButtonText, { color: color.text }]}>
-                        📷 add a photo
-                      </Text>
+                      <Text style={styles.photoButtonText}>📷 add a photo</Text>
                     </Pressable>
                   )}
                 </View>
@@ -141,87 +126,73 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   list: {
-    padding: 20,
+    padding: 22,
     gap: 14,
   },
   title: {
     fontSize: 30,
-    fontWeight: '900',
+    fontWeight: '700',
     color: ink,
     marginTop: 8,
+    letterSpacing: 0.3,
   },
   subtitle: {
     fontSize: 15,
-    color: ink,
-    opacity: 0.65,
+    color: inkSoft,
     marginTop: 2,
     marginBottom: 8,
   },
   empty: {
     textAlign: 'center',
-    color: ink,
-    opacity: 0.6,
+    color: inkSoft,
     fontSize: 15,
     marginTop: 32,
     lineHeight: 22,
   },
   card: {
-    borderWidth: borders.width,
+    backgroundColor: surface,
     borderRadius: borders.radius,
-    padding: 16,
-    gap: 8,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  cardDate: {
-    fontSize: 13,
-    fontWeight: '800',
-    opacity: 0.75,
-  },
-  doneBadge: {
-    borderWidth: 2,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  doneText: {
-    fontSize: 11,
-    fontWeight: '800',
+    padding: 18,
+    gap: 10,
+    ...softShadow,
+    shadowOpacity: 0.09,
   },
   cardBody: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 14,
     alignItems: 'center',
-  },
-  cardIcon: {
-    fontSize: 38,
   },
   cardTextWrap: {
     flex: 1,
-    gap: 3,
+    gap: 2,
+  },
+  cardDate: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: inkSoft,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 17,
+    fontWeight: '700',
+    color: ink,
+    lineHeight: 22,
   },
-  cardTip: {
+  cardMoods: {
     fontSize: 13,
-    lineHeight: 18,
-    opacity: 0.85,
+    fontWeight: '600',
+    color: accent,
+    letterSpacing: 0.3,
   },
   photo: {
-    height: 140,
+    height: 150,
     borderRadius: borders.radiusSmall,
-    marginTop: 4,
   },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 2,
   },
   starRow: {
     flexDirection: 'row',
@@ -233,21 +204,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   starText: {
-    fontSize: 20,
+    fontSize: 19,
   },
   starDim: {
-    opacity: 0.25,
+    opacity: 0.22,
   },
   photoButton: {
-    borderWidth: 2,
     borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(75, 67, 86, 0.06)',
     minHeight: 44,
     justifyContent: 'center',
   },
   photoButtonText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
+    color: ink,
   },
 });

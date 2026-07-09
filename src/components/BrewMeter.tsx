@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -7,7 +8,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 
-import { accent, borders, canvas, ink } from '@/lib/theme';
+import { accent, accentGradient, inkSoft, softShadow, surface } from '@/lib/theme';
 
 const SEGMENTS = 5; // one per pick, never more (§5.3)
 
@@ -17,12 +18,6 @@ interface Props {
 }
 
 export function BrewMeter({ progress, daypart }: Props) {
-  const fill = useSharedValue(progress);
-
-  useEffect(() => {
-    fill.value = withSpring(progress, { damping: 16, stiffness: 140 });
-  }, [progress, fill]);
-
   const percent = Math.round(progress * 100);
   const filledCount = Math.round(progress * SEGMENTS);
 
@@ -59,7 +54,14 @@ function Segment({ filled }: { filled: boolean }) {
 
   return (
     <View style={styles.segment}>
-      <Animated.View style={[styles.segmentFill, fillStyle]} />
+      <Animated.View style={[styles.segmentFill, fillStyle]}>
+        <LinearGradient
+          colors={accentGradient}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={styles.segmentGradient}
+        />
+      </Animated.View>
     </View>
   );
 }
@@ -69,24 +71,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: canvas,
-    borderWidth: borders.width,
-    borderColor: ink,
-    borderRadius: borders.radius,
+    backgroundColor: surface,
+    borderRadius: 22,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 13,
+    ...softShadow,
   },
   gift: {
-    fontSize: 30,
+    fontSize: 28,
   },
   middle: {
     flex: 1,
     gap: 7,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: ink,
+    fontSize: 13,
+    fontWeight: '600',
+    color: inkSoft,
+    letterSpacing: 0.2,
   },
   segments: {
     flexDirection: 'row',
@@ -94,24 +96,24 @@ const styles = StyleSheet.create({
   },
   segment: {
     flex: 1,
-    height: 16,
+    height: 12,
     borderRadius: 6,
-    borderWidth: 2,
-    borderColor: ink,
-    backgroundColor: canvas,
+    backgroundColor: 'rgba(75, 67, 86, 0.08)',
     overflow: 'hidden',
-    padding: 2,
   },
   segmentFill: {
     flex: 1,
-    borderRadius: 3,
-    backgroundColor: accent,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  segmentGradient: {
+    flex: 1,
   },
   percent: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: ink,
-    minWidth: 52,
+    fontSize: 19,
+    fontWeight: '800',
+    color: accent,
+    minWidth: 50,
     textAlign: 'right',
   },
 });

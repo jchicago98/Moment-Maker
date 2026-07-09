@@ -25,17 +25,17 @@ This file is the source of truth for building the app. Read it fully before maki
 
 ## 3. Design language (do not drift from this)
 
-- **Canvas**: warm cream `#FDF6EC`. Ink/outlines: `#2C2C2A`, always chunky **3px borders** on cards and key controls, `border-radius: 16–20px`.
-- **Candy palette** (card fills / accents, always pair fill with its own dark text tone):
-  - Teal `#9FE1CB` (border `#085041`, text `#04342C`)
-  - Coral `#F5C4B3` / `#E8845C` (border `#712B13`, text `#4A1B0C`), primary accent `#D85A30`
-  - Purple `#CECBF6` (border `#3C3489`, text `#26215C`)
-  - Amber `#FAC775` (border `#854F0B`)
-  - Pink `#F4C0D1` (border `#72243E`)
-- **Layout signature**: the two picker cards are **dealt diagonally** (top-left and bottom-right) with opposite ±4° tilts and a chunky dark "VS" badge at the crossing point. Tilt never exceeds 5° (legibility).
+> **v2 (current)** — soft-pastel "bird guide" aesthetic, modeled on `birds-guide-app-design.png` (repo root). Replaced the original chunky-ink-border candy look.
+
+- **Canvas**: soft two-stop gradient that shifts with the time of day (morning peach→rose, day cream→pale lavender, dusk apricot→plum haze, night lavender→dusty violet). See `daypartGradient` in `src/lib/theme.ts`.
+- **Ink**: dark plum `#4B4356` (secondary text at 60% opacity). No dark borders anywhere — surfaces are borderless `#FFFBF7` cards with large radii (18–26px) and a soft plum shadow (`softShadow`).
+- **Accent**: pink `#E76D8E`; primary buttons are pills filled with the `#F2709C → #C86DD7` gradient. Mood lists render as pink subtitle text ("cozy · silly · tasty") under titles.
+- **Icon halos**: every idea emoji sits on a circular peach→pink gradient (`IconHalo`) — the signature visual, like specimen thumbnails in a field guide.
+- **Pastel candy palette** (occasional card tints, always paired with a deep same-hue text tone): teal `#DCF2E9`, coral `#FBE3D8`, purple `#E9E4F9`, amber `#FCEBCF`, pink `#F9DEE8`.
+- **Layout signature**: the two picker cards are **dealt diagonally** (top-left and bottom-right) with opposite ±4° tilts and a soft white "vs" badge at the crossing point. Tilt never exceeds 5° (legibility). Card faces are minimal: halo + name; details live in the tap-to-peek modal.
+- **Navigation**: floating rounded icon-only tab bar, hidden during quizzes/ceremonies.
 - **Motion**: bouncy spring easings (`cubic-bezier(0.2, 1.4, 0.4, 1)` feel), cards "deal in" from below, gentle "breathe" idle animations on tappable hero elements. Respect the OS reduce-motion setting.
-- Typography: rounded friendly sans, sentence case everywhere, copy is warm and brief ("Your evening is brewing…", "Throw one to pick!").
-- Time-of-day theming (v1.5+): the palette warms/cools with the clock (morning peach → midday bright → dusk orange/plum → night deep blue), synced with the adaptive music.
+- Typography: light and airy — weights 600–700 for titles (never 800+), slight letter-spacing, sentence case everywhere; copy is warm and brief ("Your evening is brewing…", "Throw one to pick!").
 
 ## 4. Sound & haptics (core identity, not polish)
 

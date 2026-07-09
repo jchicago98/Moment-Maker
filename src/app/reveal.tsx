@@ -17,13 +17,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BigButton } from '@/components/BigButton';
 import { ConfettiBurst } from '@/components/ConfettiBurst';
+import { IconHalo } from '@/components/IconHalo';
+import { ScheduleSheet } from '@/components/ScheduleSheet';
 import { playDealIn, playGiftKnock, playRevealMelody } from '@/lib/audio/soundEngine';
 import { daypartWord } from '@/lib/daypart';
 import { hapticReveal } from '@/lib/haptics';
 import { iconEmoji } from '@/lib/icons';
 import { createMoment } from '@/lib/momentActions';
 import { useSession } from '@/lib/store/session';
-import { borders, candy, canvas, ink } from '@/lib/theme';
+import { accent, borders, ink, inkSoft, softShadow, surface } from '@/lib/theme';
 
 function durationLabel(min: number): string {
   if (min < 60) return `${min} min`;
@@ -39,13 +41,13 @@ export default function RevealScreen() {
   // Local copy so "Maybe another" can swap without touching the store.
   const [idea, setIdea] = useState(finalIdea);
   const [rerolled, setRerolled] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
 
   if (!idea) {
     return <Redirect href="/" />;
   }
 
   const daypart = daypartWord();
-  const color = candy.teal;
 
   const handleOpened = () => {
     setOpened(true);
@@ -53,8 +55,10 @@ export default function RevealScreen() {
     playRevealMelody();
   };
 
-  const letsDoIt = () => {
-    createMoment(idea);
+  // "Let's do it!" → pick a date & time, then it becomes the pending moment.
+  const confirmSchedule = (date: Date | null) => {
+    setScheduling(false);
+    createMoment(idea, date);
     reset();
     router.replace('/');
   };
@@ -86,30 +90,23 @@ export default function RevealScreen() {
             <Animated.View
               key={idea.id}
               entering={reduceMotion ? FadeIn : FadeInUp.delay(250).springify().damping(13)}
-              style={[styles.ideaCard, { backgroundColor: color.fill, borderColor: color.border }]}
+              style={styles.ideaCard}
             >
-              <Text style={styles.ideaIcon}>{iconEmoji(idea.icon)}</Text>
-              <Text style={[styles.ideaTitle, { color: color.text }]}>{idea.title}</Text>
-              <Text style={[styles.ideaTip, { color: color.text }]}>{idea.description}</Text>
-              <View style={styles.chipRow}>
-                <View style={[styles.chip, { borderColor: color.border }]}>
-                  <Text style={[styles.chipText, { color: color.text }]}>
-                    {durationLabel(idea.durationMin)}
-                  </Text>
-                </View>
-                <View style={[styles.chip, { borderColor: color.border }]}>
-                  <Text style={[styles.chipText, { color: color.text }]}>
-                    {idea.costTier === 0 ? 'free' : '$'.repeat(idea.costTier)}
-                  </Text>
-                </View>
-              </View>
+              <IconHalo emoji={iconEmoji(idea.icon)} size="l" />
+              <Text style={styles.ideaTitle}>{idea.title}</Text>
+              <Text style={styles.moods}>{idea.moods.join(' · ')}</Text>
+              <Text style={styles.ideaTip}>{idea.description}</Text>
+              <Text style={styles.meta}>
+                {durationLabel(idea.durationMin)} ·{' '}
+                {idea.costTier === 0 ? 'free' : '$'.repeat(idea.costTier)}
+              </Text>
             </Animated.View>
 
             <Animated.View
               entering={reduceMotion ? FadeIn : FadeInUp.delay(600).springify()}
               style={styles.buttons}
             >
-              <BigButton label="Let's do it! 🎉" onPress={letsDoIt} breathe />
+              <BigButton label="Let's do it! 🎉" onPress={() => setScheduling(true)} breathe />
               {runnerUp && !rerolled && (
                 <BigButton label="Maybe another" variant="ghost" onPress={maybeAnother} />
               )}
@@ -123,6 +120,12 @@ export default function RevealScreen() {
             </Animated.View>
           </ScrollView>
           {!reduceMotion && <ConfettiBurst />}
+          <ScheduleSheet
+            visible={scheduling}
+            ideaTitle={idea.title}
+            onConfirm={confirmSchedule}
+            onClose={() => setScheduling(false)}
+          />
         </>
       ) : (
         <GiftBox daypart={daypart} reduceMotion={reduceMotion} onOpened={handleOpened} />
@@ -229,81 +232,84 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   brewedBadge: {
-    backgroundColor: ink,
+    backgroundColor: surface,
     borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    ...softShadow,
+    shadowOpacity: 0.1,
   },
   brewedText: {
-    color: canvas,
-    fontWeight: '900',
-    fontSize: 14,
-    letterSpacing: 0.5,
+    color: accent,
+    fontWeight: '800',
+    fontSize: 13,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   readyTitle: {
-    fontSize: 28,
-    fontWeight: '900',
+    fontSize: 27,
+    fontWeight: '700',
     color: ink,
     textAlign: 'center',
+    letterSpacing: 0.3,
   },
   gift: {
     fontSize: 110,
     marginVertical: 12,
   },
   tapHint: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: ink,
-    opacity: 0.6,
+    color: inkSoft,
   },
   revealContainer: {
     flexGrow: 1,
-    padding: 24,
+    padding: 26,
     justifyContent: 'center',
     gap: 20,
   },
   revealTitle: {
-    fontSize: 26,
-    fontWeight: '900',
+    fontSize: 25,
+    fontWeight: '700',
     color: ink,
     textAlign: 'center',
+    letterSpacing: 0.3,
   },
   ideaCard: {
-    borderWidth: borders.width,
+    backgroundColor: surface,
     borderRadius: borders.radius,
-    padding: 24,
+    padding: 26,
     alignItems: 'center',
-    gap: 10,
-  },
-  ideaIcon: {
-    fontSize: 64,
+    gap: 8,
+    ...softShadow,
   },
   ideaTitle: {
-    fontSize: 24,
-    fontWeight: '900',
+    fontSize: 23,
+    fontWeight: '700',
+    color: ink,
     textAlign: 'center',
     lineHeight: 30,
+    letterSpacing: 0.2,
+    marginTop: 6,
+  },
+  moods: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: accent,
+    letterSpacing: 0.4,
   },
   ideaTip: {
     fontSize: 15,
-    lineHeight: 21,
+    lineHeight: 22,
     textAlign: 'center',
-    opacity: 0.9,
+    color: inkSoft,
+    marginTop: 2,
   },
-  chipRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 4,
-  },
-  chip: {
-    borderWidth: 2,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  chipText: {
+  meta: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
+    color: inkSoft,
+    marginTop: 4,
   },
   buttons: {
     gap: 10,
@@ -317,7 +323,6 @@ const styles = StyleSheet.create({
   notTonightText: {
     fontSize: 14,
     fontWeight: '600',
-    color: ink,
-    opacity: 0.5,
+    color: inkSoft,
   },
 });

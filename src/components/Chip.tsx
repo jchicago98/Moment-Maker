@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
 
-import { borders, candy, canvas, ink } from '@/lib/theme';
+import { accent, ink } from '@/lib/theme';
 
 interface Props {
   label: string;
@@ -27,25 +27,23 @@ export function Chip({ label, selected, onPress }: Props) {
 
 const styles = StyleSheet.create({
   chip: {
-    borderWidth: borders.width,
-    borderColor: ink,
     borderRadius: 999,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: canvas,
+    backgroundColor: 'rgba(255, 255, 255, 0.72)',
     minHeight: 44,
     justifyContent: 'center',
   },
   selected: {
-    backgroundColor: candy.teal.fill,
-    borderColor: candy.teal.border,
+    backgroundColor: accent,
   },
   label: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
     color: ink,
+    letterSpacing: 0.2,
   },
   selectedLabel: {
-    color: candy.teal.text,
+    color: '#FFFFFF',
   },
 });

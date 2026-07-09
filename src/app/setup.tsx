@@ -118,23 +118,25 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 30,
-    fontWeight: '900',
+    fontWeight: '700',
     color: ink,
     marginTop: 12,
+    letterSpacing: 0.3,
   },
   subtitle: {
     fontSize: 15,
     color: ink,
-    opacity: 0.65,
+    opacity: 0.6,
     marginTop: -16,
   },
   section: {
     gap: 12,
   },
   sectionLabel: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '700',
     color: ink,
+    letterSpacing: 0.2,
   },
   chipRow: {
     flexDirection: 'row',

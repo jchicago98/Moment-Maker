@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
@@ -10,10 +10,11 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useEffect } from 'react';
 
+import { IconHalo } from '@/components/IconHalo';
 import { playPickup, playThrowLock, playTick } from '@/lib/audio/soundEngine';
 import { hapticPickup, hapticThrow } from '@/lib/haptics';
 import { iconEmoji } from '@/lib/icons';
-import { borders, type CandyColor } from '@/lib/theme';
+import { borders, ink, softShadow, surface } from '@/lib/theme';
 import type { Idea } from '@/lib/types';
 
 // Lock-in thresholds (CLAUDE.md §5.3): velocity OR displacement wins.
@@ -26,14 +27,11 @@ export type CardResolution = 'winner' | 'loser' | null;
 
 interface Props {
   idea: Idea;
-  color: CandyColor;
   tilt: number; // static deal tilt, degrees
   side: 'top' | 'bottom';
   resolution: CardResolution;
   dragEnabled: boolean;
   reduceMotion: boolean;
-  /** Live weather chip ("72° clear"), shown on outdoor ideas only. */
-  weatherChip?: string | null;
   /** Fired once when this card is locked in by a throw. */
   onPick: (throwVelocity: number) => void;
   /** Tap = peek: opens the detail view (picking happens there or by throw). */
@@ -52,13 +50,11 @@ function lockFeedback(intensity: number): void {
 
 export function DraggableIdeaCard({
   idea,
-  color,
   tilt,
   side,
   resolution,
   dragEnabled,
   reduceMotion,
-  weatherChip,
   onPick,
   onInspect,
 }: Props) {
@@ -165,83 +161,41 @@ export function DraggableIdeaCard({
     };
   });
 
+  // Minimal face: halo + name. Everything else lives in the detail modal.
   return (
     <GestureDetector gesture={gesture}>
       <Animated.View
         accessible
         accessibilityRole="button"
         accessibilityLabel={`${idea.title}. Tap to read more, throw off screen to pick.`}
-        style={[styles.card, { backgroundColor: color.fill, borderColor: color.border }, animatedStyle]}
+        style={[styles.card, animatedStyle]}
       >
-        <Text style={styles.icon}>{iconEmoji(idea.icon)}</Text>
-        <Text style={[styles.title, { color: color.text }]}>{idea.title}</Text>
-        <Text style={[styles.description, { color: color.text }]} numberOfLines={2}>
-          {idea.description}
+        <IconHalo emoji={iconEmoji(idea.icon)} size="m" />
+        <Text style={styles.title} numberOfLines={2}>
+          {idea.title}
         </Text>
-        <View style={styles.chipRow}>
-          <View style={[styles.chip, { borderColor: color.border }]}>
-            <Text style={[styles.chipText, { color: color.text }]}>
-              {durationLabel(idea.durationMin)}
-            </Text>
-          </View>
-          <View style={[styles.chip, { borderColor: color.border }]}>
-            <Text style={[styles.chipText, { color: color.text }]}>{costLabel(idea.costTier)}</Text>
-          </View>
-          {idea.setting === 'outdoor' && weatherChip && (
-            <View style={[styles.chip, { borderColor: color.border }]}>
-              <Text style={[styles.chipText, { color: color.text }]}>{weatherChip}</Text>
-            </View>
-          )}
-        </View>
       </Animated.View>
     </GestureDetector>
   );
 }
 
-function durationLabel(min: number): string {
-  if (min < 60) return `${min} min`;
-  if (min % 60 === 0) return `${min / 60} h`;
-  return `${Math.floor(min / 60)}½ h`;
-}
-
-function costLabel(tier: number): string {
-  return tier === 0 ? 'free' : '$'.repeat(tier);
-}
-
 const styles = StyleSheet.create({
   card: {
-    width: '78%',
-    borderWidth: borders.width,
+    width: '74%',
+    backgroundColor: surface,
     borderRadius: borders.radius,
-    padding: 18,
-    gap: 6,
-  },
-  icon: {
-    fontSize: 44,
+    paddingVertical: 20,
+    paddingHorizontal: 18,
+    alignItems: 'center',
+    gap: 12,
+    ...softShadow,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '800',
-    lineHeight: 25,
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 19,
-    opacity: 0.85,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 4,
-  },
-  chip: {
-    borderWidth: 2,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  chipText: {
-    fontSize: 12,
+    fontSize: 18,
     fontWeight: '700',
+    lineHeight: 24,
+    color: ink,
+    textAlign: 'center',
+    letterSpacing: 0.2,
   },
 });

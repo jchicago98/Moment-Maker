@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { resetProfileData } from '@/lib/db/database';
 import { useSession } from '@/lib/store/session';
 import { useSettings } from '@/lib/store/settings';
-import { borders, candy, canvas, ink } from '@/lib/theme';
+import { borders, candy, canvas, ink, inkSoft, softShadow, surface } from '@/lib/theme';
 import { useWeather } from '@/lib/weather';
 
 export default function SettingsScreen() {
@@ -134,17 +134,18 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 30,
-    fontWeight: '900',
+    fontWeight: '700',
     color: ink,
     marginTop: 8,
+    letterSpacing: 0.3,
   },
   card: {
-    borderWidth: borders.width,
-    borderColor: ink,
     borderRadius: borders.radius,
-    backgroundColor: canvas,
-    padding: 16,
+    backgroundColor: surface,
+    padding: 18,
     gap: 16,
+    ...softShadow,
+    shadowOpacity: 0.09,
   },
   row: {
     flexDirection: 'row',
@@ -159,50 +160,48 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '700',
     color: ink,
+    letterSpacing: 0.2,
   },
   rowHint: {
     fontSize: 13,
-    color: ink,
-    opacity: 0.6,
+    color: inkSoft,
   },
   soon: {
     fontSize: 13,
-    fontWeight: '700',
-    color: ink,
-    opacity: 0.45,
+    fontWeight: '600',
+    color: inkSoft,
   },
   granted: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
     color: candy.teal.border,
   },
   smallButton: {
-    borderWidth: 2,
-    borderColor: ink,
     borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    backgroundColor: 'rgba(75, 67, 86, 0.07)',
     minHeight: 44,
     justifyContent: 'center',
   },
   smallButtonText: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     color: ink,
   },
   resetButton: {
-    borderWidth: borders.width,
-    borderColor: candy.coral.border,
     backgroundColor: candy.coral.fill,
     borderRadius: borders.radius,
-    padding: 16,
+    padding: 17,
     alignItems: 'center',
+    ...softShadow,
+    shadowOpacity: 0.08,
   },
   resetText: {
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '700',
     color: candy.coral.text,
   },
 });

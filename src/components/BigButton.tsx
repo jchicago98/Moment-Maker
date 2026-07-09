@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect } from 'react';
+import { Pressable, StyleSheet, Text } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -10,7 +11,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { accent, borders, canvas, ink } from '@/lib/theme';
+import { accentGradient, ink, softShadow, surface } from '@/lib/theme';
 
 interface Props {
   label: string;
@@ -49,50 +50,64 @@ export function BigButton({ label, onPress, variant = 'primary', breathe = false
         accessibilityRole="button"
         onPress={onPress}
         style={({ pressed }) => [
-          styles.button,
-          primary ? styles.primary : styles.ghost,
+          styles.wrap,
+          primary ? styles.primaryShadow : styles.ghost,
           pressed && { transform: [{ scale: 0.97 }] },
         ]}
       >
-        <Text style={[styles.label, primary ? styles.primaryLabel : styles.ghostLabel]}>
-          {label}
-        </Text>
+        {primary ? (
+          <LinearGradient
+            colors={accentGradient}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={styles.gradient}
+          >
+            <Text style={styles.primaryLabel}>{label}</Text>
+          </LinearGradient>
+        ) : (
+          <Text style={styles.ghostLabel}>{label}</Text>
+        )}
       </Pressable>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  button: {
-    borderWidth: borders.width,
-    borderRadius: borders.radius,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    alignItems: 'center',
+  wrap: {
+    borderRadius: 999,
     minHeight: 56,
     justifyContent: 'center',
+    overflow: 'visible',
   },
-  primary: {
-    backgroundColor: accent,
-    borderColor: ink,
-    shadowColor: ink,
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 4,
+  primaryShadow: {
+    ...softShadow,
+    shadowColor: '#D4527E',
+    shadowOpacity: 0.35,
+  },
+  gradient: {
+    borderRadius: 999,
+    paddingVertical: 17,
+    paddingHorizontal: 24,
+    alignItems: 'center',
   },
   ghost: {
-    backgroundColor: canvas,
-    borderColor: ink,
-  },
-  label: {
-    fontSize: 18,
-    fontWeight: '800',
+    backgroundColor: surface,
+    paddingVertical: 17,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    ...softShadow,
+    shadowOpacity: 0.08,
   },
   primaryLabel: {
-    color: canvas,
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.4,
   },
   ghostLabel: {
+    fontSize: 17,
+    fontWeight: '600',
     color: ink,
+    letterSpacing: 0.3,
   },
 });

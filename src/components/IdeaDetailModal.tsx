@@ -1,15 +1,17 @@
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BigButton } from '@/components/BigButton';
+import { IconHalo } from '@/components/IconHalo';
 import { iconEmoji } from '@/lib/icons';
-import { borders, type CandyColor } from '@/lib/theme';
+import { accent, borders, candy, ink, inkSoft, softShadow, surface } from '@/lib/theme';
+import { currentChip, currentOutlook } from '@/lib/weather';
 import type { Idea } from '@/lib/types';
 
 interface Props {
   idea: Idea | null; // null = closed
-  color: CandyColor;
-  /** Omit to make the modal read-only (no pick button). */
-  onPick?: () => void;
+  /** Primary action ("Pick this one 🎯", "Do this idea 💫"). Omit for read-only. */
+  actionLabel?: string;
+  onAction?: () => void;
   onClose: () => void;
 }
 
@@ -19,17 +21,18 @@ function durationLabel(min: number): string {
   return `${Math.floor(min / 60)}½ h`;
 }
 
-const GROUP_LABELS: Record<string, string> = {
-  solo: 'just me',
-  couple: 'partner',
-  friends: 'friends',
-  family: 'family',
-};
+export function IdeaDetailModal({ idea, actionLabel, onAction, onClose }: Props) {
+  const weatherChip = idea?.setting === 'outdoor' ? currentChip() : null;
+  const badWeather =
+    idea?.setting === 'outdoor' && idea.weatherSensitive && currentOutlook() === 'bad';
 
-const ENERGY_LABELS = ['', 'chill', 'medium energy', 'active'];
-const SETTING_LABELS = { indoor: 'indoors', outdoor: 'outdoors', either: 'in or out' };
+  const openMap = () => {
+    if (!idea) return;
+    Linking.openURL(
+      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(idea.title)}`
+    );
+  };
 
-export function IdeaDetailModal({ idea, color, onPick, onClose }: Props) {
   return (
     <Modal visible={idea !== null} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close details">
@@ -37,31 +40,36 @@ export function IdeaDetailModal({ idea, color, onPick, onClose }: Props) {
           <Pressable
             // Swallow taps on the card itself so only the backdrop dismisses.
             onPress={() => {}}
-            style={[styles.card, { backgroundColor: color.fill, borderColor: color.border }]}
+            style={styles.card}
           >
             <ScrollView contentContainerStyle={styles.content}>
-              <Text style={styles.icon}>{iconEmoji(idea.icon)}</Text>
-              <Text style={[styles.title, { color: color.text }]}>{idea.title}</Text>
-              <Text style={[styles.description, { color: color.text }]}>{idea.description}</Text>
+              <View style={styles.haloWrap}>
+                <IconHalo emoji={iconEmoji(idea.icon)} size="l" />
+              </View>
+              <Text style={styles.title}>{idea.title}</Text>
+              <Text style={styles.moods}>{idea.moods.join(' · ')}</Text>
+              <Text style={styles.description}>{idea.description}</Text>
 
               <View style={styles.chipWrap}>
-                {idea.moods.map((mood) => (
-                  <DetailChip key={mood} color={color} text={mood} />
-                ))}
-                <DetailChip color={color} text={durationLabel(idea.durationMin)} />
-                <DetailChip color={color} text={idea.costTier === 0 ? 'free' : '$'.repeat(idea.costTier)} />
-                <DetailChip color={color} text={SETTING_LABELS[idea.setting]} />
-                <DetailChip color={color} text={ENERGY_LABELS[idea.energy]} />
-                {idea.groupFit.map((group) => (
-                  <DetailChip key={group} color={color} text={GROUP_LABELS[group] ?? group} />
-                ))}
-                {idea.timeOfDay.map((time) => (
-                  <DetailChip key={time} color={color} text={time} />
-                ))}
+                <InfoChip text={durationLabel(idea.durationMin)} />
+                <InfoChip text={idea.costTier === 0 ? 'free' : '$'.repeat(idea.costTier)} />
+                {weatherChip && <InfoChip text={weatherChip} />}
+                {badWeather && <InfoChip text="☔ better indoors today" tone="warn" />}
               </View>
 
+              {idea.requiresTravel && (
+                <Pressable
+                  accessibilityRole="link"
+                  accessibilityLabel={`Find ${idea.title} nearby on the map`}
+                  onPress={openMap}
+                  style={({ pressed }) => [styles.mapLink, pressed && { opacity: 0.6 }]}
+                >
+                  <Text style={styles.mapLinkText}>📍 find nearby</Text>
+                </Pressable>
+              )}
+
               <View style={styles.buttons}>
-                {onPick && <BigButton label="Pick this one 🎯" onPress={onPick} />}
+                {actionLabel && onAction && <BigButton label={actionLabel} onPress={onAction} />}
                 <BigButton label="Keep looking" variant="ghost" onPress={onClose} />
               </View>
             </ScrollView>
@@ -72,10 +80,10 @@ export function IdeaDetailModal({ idea, color, onPick, onClose }: Props) {
   );
 }
 
-function DetailChip({ color, text }: { color: CandyColor; text: string }) {
+function InfoChip({ text, tone = 'neutral' }: { text: string; tone?: 'neutral' | 'warn' }) {
   return (
-    <View style={[styles.chip, { borderColor: color.border }]}>
-      <Text style={[styles.chipText, { color: color.text }]}>{text}</Text>
+    <View style={[styles.chip, tone === 'warn' && styles.chipWarn]}>
+      <Text style={[styles.chipText, tone === 'warn' && styles.chipTextWarn]}>{text}</Text>
     </View>
   );
 }
@@ -83,51 +91,83 @@ function DetailChip({ color, text }: { color: CandyColor; text: string }) {
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(44, 44, 42, 0.55)', // ink at half strength
+    backgroundColor: 'rgba(75, 67, 86, 0.45)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
   },
   card: {
     width: '100%',
-    maxHeight: '80%',
-    borderWidth: borders.width,
+    maxHeight: '82%',
+    backgroundColor: surface,
     borderRadius: borders.radius,
+    ...softShadow,
   },
   content: {
-    padding: 22,
-    gap: 10,
+    padding: 26,
+    gap: 8,
+    alignItems: 'center',
   },
-  icon: {
-    fontSize: 56,
+  haloWrap: {
+    marginBottom: 4,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '900',
+    fontSize: 23,
+    fontWeight: '700',
     lineHeight: 30,
+    color: ink,
+    textAlign: 'center',
+    letterSpacing: 0.2,
+  },
+  moods: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: accent,
+    letterSpacing: 0.4,
   },
   description: {
-    fontSize: 16,
+    fontSize: 15,
     lineHeight: 23,
-    opacity: 0.9,
+    color: inkSoft,
+    textAlign: 'center',
+    marginTop: 4,
   },
   chipWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 4,
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 10,
   },
   chip: {
-    borderWidth: 2,
     borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(75, 67, 86, 0.07)',
+  },
+  chipWarn: {
+    backgroundColor: candy.coral.fill,
   },
   chipText: {
-    fontSize: 12,
+    fontSize: 13,
+    fontWeight: '600',
+    color: ink,
+  },
+  chipTextWarn: {
+    color: candy.coral.text,
+  },
+  mapLink: {
+    padding: 8,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  mapLinkText: {
+    fontSize: 14,
     fontWeight: '700',
+    color: accent,
   },
   buttons: {
+    alignSelf: 'stretch',
     gap: 10,
     marginTop: 12,
   },

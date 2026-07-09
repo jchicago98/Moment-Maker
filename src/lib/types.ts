@@ -113,6 +113,7 @@ export interface Moment {
   ideaId: string;
   status: 'pending' | 'done' | 'dismissed';
   createdAt: string;
+  scheduledFor?: string; // when the user plans to do it; editable
   confirmedAt?: string;
   rating?: 1 | 2 | 3 | 4 | 5;
   photoUri?: string;

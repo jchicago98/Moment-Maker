@@ -6,6 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BigButton } from '@/components/BigButton';
 import { ConfettiBurst } from '@/components/ConfettiBurst';
+import { IconHalo } from '@/components/IconHalo';
+import { ScheduleSheet } from '@/components/ScheduleSheet';
 import { daypartWord } from '@/lib/daypart';
 import { getPendingMoment, hasProfile, type MomentWithIdea } from '@/lib/db/database';
 import { hapticReveal } from '@/lib/haptics';
@@ -16,13 +18,28 @@ import {
   pickAndAttachPhoto,
   rateMoment,
   readyToAsk,
+  rescheduleMoment,
 } from '@/lib/momentActions';
-import { borders, candy, ink } from '@/lib/theme';
+import { accent, borders, daypartEmoji, daypartOf, ink, inkSoft, softShadow, surface } from '@/lib/theme';
+import { currentChip } from '@/lib/weather';
 
 function greeting(): string {
   const daypart = daypartWord();
-  if (daypart === 'night') return 'Up late? ✨';
-  return `Good ${daypart} ✨`;
+  if (daypart === 'night') return 'Up late?';
+  return `Good ${daypart}`;
+}
+
+function scheduleLine(scheduledFor?: string): string {
+  if (!scheduledFor) return 'whenever you’re ready ✨';
+  const date = new Date(scheduledFor);
+  const time = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const today = new Date();
+  const tomorrow = new Date();
+  tomorrow.setDate(today.getDate() + 1);
+  if (date.toDateString() === today.toDateString()) return `Today · ${time}`;
+  if (date.toDateString() === tomorrow.toDateString()) return `Tomorrow · ${time}`;
+  const day = date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+  return `${day} · ${time}`;
 }
 
 export default function HomeScreen() {
@@ -33,6 +50,7 @@ export default function HomeScreen() {
   const [celebrating, setCelebrating] = useState<MomentWithIdea | null>(null);
   const [rating, setRating] = useState<number | null>(null);
   const [hasPhoto, setHasPhoto] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -40,6 +58,7 @@ export default function HomeScreen() {
       setCelebrating(null);
       setRating(null);
       setHasPhoto(false);
+      setScheduling(false);
     }, [])
   );
 
@@ -73,18 +92,29 @@ export default function HomeScreen() {
     if (await pickAndAttachPhoto(celebrating.moment.id)) setHasPhoto(true);
   };
 
+  const reschedule = (date: Date | null) => {
+    setScheduling(false);
+    if (!pending) return;
+    rescheduleMoment(pending.moment.id, date);
+    setPending(getPendingMoment());
+  };
+
   const asking = pending !== null && readyToAsk(pending.moment);
+  const weather = currentChip();
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
+      <View style={styles.topRow}>
         <Text style={styles.greeting}>{greeting()}</Text>
+        {weather && <Text style={styles.weather}>{weather}</Text>}
+      </View>
 
+      <View style={styles.container}>
         {celebrating ? (
-          <View style={[styles.momentCard, styles.doneCard]}>
-            <Text style={styles.momentIcon}>{iconEmoji(celebrating.idea.icon)}</Text>
-            <Text style={styles.momentTitle}>Stamped into your scrapbook! 🎉</Text>
-            <Text style={styles.momentTip}>{rating ? 'A moment well made.' : 'How was it?'}</Text>
+          <View style={styles.card}>
+            <IconHalo emoji={iconEmoji(celebrating.idea.icon)} size="l" />
+            <Text style={styles.cardTitle}>Stamped into your scrapbook!</Text>
+            <Text style={styles.cardSub}>{rating ? 'A moment well made.' : 'How was it?'}</Text>
             <View style={styles.starRow}>
               {([1, 2, 3, 4, 5] as const).map((stars) => (
                 <Pressable
@@ -103,28 +133,46 @@ export default function HomeScreen() {
             <Pressable
               accessibilityRole="button"
               onPress={addPhoto}
-              style={({ pressed }) => [styles.photoButton, pressed && { opacity: 0.7 }]}
+              style={({ pressed }) => [styles.softPill, pressed && { opacity: 0.7 }]}
             >
-              <Text style={styles.photoButtonText}>
+              <Text style={styles.softPillText}>
                 {hasPhoto ? '📷 photo saved!' : '📷 add a photo'}
               </Text>
             </Pressable>
           </View>
         ) : pending ? (
           <>
-            <View style={[styles.momentCard, asking && styles.askCard]}>
-              <Text style={styles.momentLabel}>
-                {asking ? 'Checking in…' : "Tonight's moment"}
+            <View style={styles.card}>
+              <Text style={styles.eyebrow}>{asking ? 'Checking in' : 'Up next'}</Text>
+              <IconHalo emoji={iconEmoji(pending.idea.icon)} size="l" />
+              <Text style={styles.cardTitle}>
+                {asking ? `So… did “${pending.idea.title}” happen?` : pending.idea.title}
               </Text>
-              <Text style={styles.momentIcon}>{iconEmoji(pending.idea.icon)}</Text>
-              <Text style={styles.momentTitle}>
-                {asking ? `So… did "${pending.idea.title}" happen?` : pending.idea.title}
-              </Text>
-              <Text style={styles.momentTip}>{pending.idea.description}</Text>
-              {asking && (
+              <Text style={styles.moods}>{pending.idea.moods.join(' · ')}</Text>
+              {!asking && (
+                <Text style={styles.schedule}>{scheduleLine(pending.moment.scheduledFor)}</Text>
+              )}
+              {asking ? (
                 <View style={styles.askButtons}>
                   <BigButton label="We did it! 🎉" onPress={weDidIt} />
                   <BigButton label="Not this time 💤" variant="ghost" onPress={notThisTime} />
+                </View>
+              ) : (
+                <View style={styles.momentActions}>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => setScheduling(true)}
+                    style={({ pressed }) => [styles.softPill, pressed && { opacity: 0.7 }]}
+                  >
+                    <Text style={styles.softPillText}>🕰 edit time</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={weDidIt}
+                    style={({ pressed }) => [styles.softPill, pressed && { opacity: 0.7 }]}
+                  >
+                    <Text style={styles.softPillText}>✓ mark as done</Text>
+                  </Pressable>
                 </View>
               )}
             </View>
@@ -140,7 +188,8 @@ export default function HomeScreen() {
           </>
         ) : (
           <View style={styles.prompt}>
-            <Text style={styles.promptTitle}>What should we do today?</Text>
+            <IconHalo emoji={daypartEmoji[daypartOf()]} size="l" />
+            <Text style={styles.promptTitle}>What should we{'\n'}do today?</Text>
             <View style={styles.promptButtons}>
               <BigButton label="Help me pick 🃏" onPress={() => router.push('/setup')} breathe />
               <BigButton
@@ -152,6 +201,16 @@ export default function HomeScreen() {
           </View>
         )}
       </View>
+
+      {pending && (
+        <ScheduleSheet
+          visible={scheduling}
+          ideaTitle={pending.idea.title}
+          initial={pending.moment.scheduledFor ? new Date(pending.moment.scheduledFor) : null}
+          onConfirm={reschedule}
+          onClose={() => setScheduling(false)}
+        />
+      )}
       {celebrating && !reduceMotion && <ConfettiBurst />}
     </SafeAreaView>
   );
@@ -161,78 +220,109 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
   },
-  container: {
-    flex: 1,
-    padding: 24,
-    justifyContent: 'center',
-    gap: 20,
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 28,
+    paddingTop: 14,
   },
   greeting: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: ink,
-    opacity: 0.6,
-    textAlign: 'center',
+    fontSize: 15,
+    fontWeight: '600',
+    color: inkSoft,
+    letterSpacing: 0.3,
+  },
+  weather: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: inkSoft,
+  },
+  container: {
+    flex: 1,
+    padding: 28,
+    justifyContent: 'center',
+    gap: 18,
   },
   prompt: {
+    alignItems: 'center',
     gap: 24,
   },
   promptTitle: {
-    fontSize: 34,
-    fontWeight: '900',
+    fontSize: 32,
+    fontWeight: '700',
     color: ink,
     textAlign: 'center',
     lineHeight: 42,
+    letterSpacing: 0.3,
   },
   promptButtons: {
+    alignSelf: 'stretch',
     gap: 12,
   },
-  momentCard: {
-    borderWidth: borders.width,
-    borderColor: candy.purple.border,
-    backgroundColor: candy.purple.fill,
+  card: {
+    backgroundColor: surface,
     borderRadius: borders.radius,
-    padding: 22,
+    padding: 26,
     alignItems: 'center',
     gap: 8,
+    ...softShadow,
   },
-  askCard: {
-    borderColor: candy.amber.border,
-    backgroundColor: candy.amber.fill,
-  },
-  doneCard: {
-    borderColor: candy.teal.border,
-    backgroundColor: candy.teal.fill,
-  },
-  momentLabel: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: ink,
-    opacity: 0.6,
+  eyebrow: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: inkSoft,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 1.5,
+    marginBottom: 4,
   },
-  momentIcon: {
-    fontSize: 54,
-  },
-  momentTitle: {
+  cardTitle: {
     fontSize: 22,
-    fontWeight: '900',
+    fontWeight: '700',
     color: ink,
     textAlign: 'center',
-    lineHeight: 28,
+    lineHeight: 29,
+    letterSpacing: 0.2,
+    marginTop: 6,
   },
-  momentTip: {
+  cardSub: {
     fontSize: 14,
+    color: inkSoft,
+  },
+  moods: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: accent,
+    letterSpacing: 0.4,
+  },
+  schedule: {
+    fontSize: 15,
+    fontWeight: '600',
     color: ink,
-    opacity: 0.75,
-    textAlign: 'center',
-    lineHeight: 19,
+    marginTop: 2,
   },
   askButtons: {
     alignSelf: 'stretch',
     gap: 10,
-    marginTop: 8,
+    marginTop: 12,
+  },
+  momentActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
+  },
+  softPill: {
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(75, 67, 86, 0.06)',
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  softPillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: ink,
   },
   smallLink: {
     alignSelf: 'center',
@@ -243,8 +333,7 @@ const styles = StyleSheet.create({
   smallLinkText: {
     fontSize: 14,
     fontWeight: '600',
-    color: ink,
-    opacity: 0.5,
+    color: inkSoft,
   },
   starRow: {
     flexDirection: 'row',
@@ -261,19 +350,5 @@ const styles = StyleSheet.create({
   },
   starDim: {
     opacity: 0.3,
-  },
-  photoButton: {
-    borderWidth: 2,
-    borderColor: candy.teal.border,
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  photoButtonText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: candy.teal.text,
   },
 });

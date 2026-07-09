@@ -12,8 +12,7 @@ import { playDealIn, playPickup, playThrowLock } from '@/lib/audio/soundEngine';
 import { daypartWord } from '@/lib/daypart';
 import { hapticThrow } from '@/lib/haptics';
 import { useSession } from '@/lib/store/session';
-import { borders, candyOrder, canvas, cardTilt, ink } from '@/lib/theme';
-import { currentChip } from '@/lib/weather';
+import { accent, cardTilt, ink, inkSoft, softShadow, surface } from '@/lib/theme';
 import type { Idea } from '@/lib/types';
 
 // How long the losing card's fade and the winner's flight get to breathe
@@ -45,9 +44,6 @@ export default function PickerScreen() {
   }
 
   const [ideaA, ideaB] = currentPair;
-  const colorA = candyOrder[round % candyOrder.length];
-  const colorB = candyOrder[(round + 2) % candyOrder.length];
-  const weatherChip = currentChip();
 
   const handlePick = (winner: Idea, loser: Idea, throwVelocity: number) => {
     if (resolving) return;
@@ -122,13 +118,11 @@ export default function PickerScreen() {
         <Animated.View key={`${round}-a`} entering={dealIn} style={styles.cardA}>
           <DraggableIdeaCard
             idea={ideaA}
-            color={colorA}
             tilt={-cardTilt}
             side="top"
             resolution={resolutionFor(ideaA)}
             dragEnabled={!resolving && !reduceMotion}
             reduceMotion={reduceMotion}
-            weatherChip={weatherChip}
             onPick={(velocity) => handlePick(ideaA, ideaB, velocity)}
             onInspect={() => inspect(ideaA)}
           />
@@ -141,13 +135,11 @@ export default function PickerScreen() {
         <Animated.View key={`${round}-b`} entering={dealInDelayed} style={styles.cardB}>
           <DraggableIdeaCard
             idea={ideaB}
-            color={colorB}
             tilt={cardTilt}
             side="bottom"
             resolution={resolutionFor(ideaB)}
             dragEnabled={!resolving && !reduceMotion}
             reduceMotion={reduceMotion}
-            weatherChip={weatherChip}
             onPick={(velocity) => handlePick(ideaB, ideaA, velocity)}
             onInspect={() => inspect(ideaB)}
           />
@@ -160,8 +152,8 @@ export default function PickerScreen() {
 
       <IdeaDetailModal
         idea={inspecting}
-        color={inspecting?.id === ideaB.id ? colorB : colorA}
-        onPick={pickFromModal}
+        actionLabel="Pick this one 🎯"
+        onAction={pickFromModal}
         onClose={() => setInspecting(null)}
       />
     </SafeAreaView>
@@ -180,38 +172,41 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   roundBadge: {
-    backgroundColor: ink,
-    borderRadius: borders.radiusSmall,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    backgroundColor: surface,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    ...softShadow,
+    shadowOpacity: 0.08,
   },
   roundText: {
-    color: canvas,
-    fontWeight: '900',
-    fontSize: 15,
+    color: accent,
+    fontWeight: '800',
+    fontSize: 14,
+    letterSpacing: 0.5,
   },
   surprisePill: {
-    borderWidth: borders.width,
-    borderColor: ink,
     borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    backgroundColor: canvas,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: surface,
     minHeight: 44,
     justifyContent: 'center',
+    ...softShadow,
+    shadowOpacity: 0.08,
   },
   surpriseText: {
-    fontWeight: '700',
+    fontWeight: '600',
     color: ink,
-    fontSize: 14,
+    fontSize: 13,
   },
   prompt: {
     textAlign: 'center',
-    color: ink,
-    opacity: 0.65,
+    color: inkSoft,
     fontSize: 14,
     fontWeight: '600',
     marginTop: 14,
+    letterSpacing: 0.2,
   },
   arena: {
     flex: 1,

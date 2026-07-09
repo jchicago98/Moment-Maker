@@ -115,11 +115,19 @@ export function initDatabase(): void {
       ideaId TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'pending',
       createdAt TEXT NOT NULL,
+      scheduledFor TEXT,
       confirmedAt TEXT,
       rating INTEGER,
       photoUri TEXT
     );
   `);
+
+  // Dev installs created before scheduling existed: best-effort add.
+  try {
+    db.execSync('ALTER TABLE moments ADD COLUMN scheduledFor TEXT;');
+  } catch {
+    // column already exists
+  }
 
   seedIfEmpty();
 }
@@ -451,6 +459,7 @@ interface MomentRow {
   ideaId: string;
   status: string;
   createdAt: string;
+  scheduledFor: string | null;
   confirmedAt: string | null;
   rating: number | null;
   photoUri: string | null;
@@ -462,6 +471,7 @@ function rowToMoment(row: MomentRow): Moment {
     ideaId: row.ideaId,
     status: row.status as Moment['status'],
     createdAt: row.createdAt,
+    scheduledFor: row.scheduledFor ?? undefined,
     confirmedAt: row.confirmedAt ?? undefined,
     rating: (row.rating ?? undefined) as Moment['rating'],
     photoUri: row.photoUri ?? undefined,
@@ -475,18 +485,24 @@ export interface MomentWithIdea {
 
 export function insertMoment(moment: Moment): void {
   db.runSync(
-    `INSERT INTO moments (id, ideaId, status, createdAt, confirmedAt, rating, photoUri)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO moments (id, ideaId, status, createdAt, scheduledFor, confirmedAt, rating, photoUri)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       moment.id,
       moment.ideaId,
       moment.status,
       moment.createdAt,
+      moment.scheduledFor ?? null,
       moment.confirmedAt ?? null,
       moment.rating ?? null,
       moment.photoUri ?? null,
     ]
   );
+}
+
+/** Set or clear a moment's schedule (COALESCE-based updateMoment can't clear). */
+export function setMomentSchedule(id: string, scheduledFor: string | null): void {
+  db.runSync('UPDATE moments SET scheduledFor = ? WHERE id = ?', [scheduledFor, id]);
 }
 
 export function getMomentById(id: string): Moment | null {

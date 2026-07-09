@@ -116,5 +116,7 @@ const iconMap: Record<string, string> = {
 };
 
 export function iconEmoji(name: string): string {
-  return iconMap[name] ?? '🌟';
+  if (iconMap[name]) return iconMap[name];
+  // User ideas store the emoji itself; icon *names* are kebab-case ascii.
+  return /^[a-z0-9-]*$/.test(name) ? '🌟' : name;
 }

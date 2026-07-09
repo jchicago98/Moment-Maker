@@ -1,3 +1,4 @@
+import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -7,12 +8,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DraggableIdeaCard } from '@/components/DraggableIdeaCard';
 import { IdeaDetailModal } from '@/components/IdeaDetailModal';
 import { VsBadge } from '@/components/VsBadge';
-import * as Location from 'expo-location';
-
 import { applyPickUpdate, createEmptyProfile } from '@/lib/algorithm/learning';
 import { playDealIn } from '@/lib/audio/soundEngine';
 import { getIdeasByIds, saveProfile } from '@/lib/db/database';
-import { borders, candyOrder, canvas, cardTilt, ink } from '@/lib/theme';
+import { accent, cardTilt, ink, inkSoft, softShadow, surface } from '@/lib/theme';
 import { useWeather } from '@/lib/weather';
 import type { Idea, UserProfile } from '@/lib/types';
 
@@ -108,8 +107,6 @@ export default function OnboardingScreen() {
   }
 
   const [ideaA, ideaB] = pairs[Math.min(step, pairs.length - 1)];
-  const colorA = candyOrder[step % candyOrder.length];
-  const colorB = candyOrder[(step + 2) % candyOrder.length];
   const resolving = pendingWinner !== null;
 
   const dealIn = reduceMotion ? FadeIn : FadeInDown.springify().damping(14);
@@ -135,7 +132,6 @@ export default function OnboardingScreen() {
         <Animated.View key={`${step}-a`} entering={dealIn} style={styles.cardA}>
           <DraggableIdeaCard
             idea={ideaA}
-            color={colorA}
             tilt={-cardTilt}
             side="top"
             resolution={pendingWinner ? (pendingWinner.id === ideaA.id ? 'winner' : 'loser') : null}
@@ -153,7 +149,6 @@ export default function OnboardingScreen() {
         <Animated.View key={`${step}-b`} entering={dealInDelayed} style={styles.cardB}>
           <DraggableIdeaCard
             idea={ideaB}
-            color={colorB}
             tilt={cardTilt}
             side="bottom"
             resolution={pendingWinner ? (pendingWinner.id === ideaB.id ? 'winner' : 'loser') : null}
@@ -167,8 +162,8 @@ export default function OnboardingScreen() {
 
       <IdeaDetailModal
         idea={inspecting}
-        color={inspecting?.id === ideaB.id ? colorB : colorA}
-        onPick={() => pickFromModal([ideaA, ideaB])}
+        actionLabel="Pick this one 🎯"
+        onAction={() => pickFromModal([ideaA, ideaB])}
         onClose={() => setInspecting(null)}
       />
 
@@ -196,26 +191,28 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '900',
+    fontSize: 23,
+    fontWeight: '700',
     color: ink,
+    letterSpacing: 0.3,
   },
   subtitle: {
     fontSize: 14,
-    color: ink,
-    opacity: 0.65,
+    color: inkSoft,
     marginTop: 2,
   },
   stepBadge: {
-    backgroundColor: ink,
-    borderRadius: borders.radiusSmall,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    backgroundColor: surface,
+    borderRadius: 999,
+    paddingHorizontal: 15,
+    paddingVertical: 9,
+    ...softShadow,
+    shadowOpacity: 0.08,
   },
   stepText: {
-    color: canvas,
-    fontWeight: '900',
-    fontSize: 15,
+    color: accent,
+    fontWeight: '800',
+    fontSize: 14,
   },
   arena: {
     flex: 1,
@@ -248,7 +245,6 @@ const styles = StyleSheet.create({
   skipText: {
     fontSize: 14,
     fontWeight: '600',
-    color: ink,
-    opacity: 0.5,
+    color: inkSoft,
   },
 });

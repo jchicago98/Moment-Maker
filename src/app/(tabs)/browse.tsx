@@ -1,12 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Chip } from '@/components/Chip';
+import { IconHalo } from '@/components/IconHalo';
+import { IdeaDetailModal } from '@/components/IdeaDetailModal';
+import { ScheduleSheet } from '@/components/ScheduleSheet';
 import { getAllIdeas } from '@/lib/db/database';
+import { hapticReveal } from '@/lib/haptics';
 import { iconEmoji } from '@/lib/icons';
-import { borders, candy, candyOrder, canvas, ink } from '@/lib/theme';
-import { currentChip, currentOutlook } from '@/lib/weather';
+import { createMoment } from '@/lib/momentActions';
+import { accent, borders, ink, inkSoft, softShadow, surface } from '@/lib/theme';
 import { ALL_MOODS, type CostTier, type Energy, type GroupType, type Idea, type Mood, type TimeOfDay } from '@/lib/types';
 
 const costOptions: { value: CostTier; label: string }[] = [
@@ -54,6 +59,8 @@ function durationLabel(min: number): string {
 }
 
 export default function BrowseScreen() {
+  const router = useRouter();
+  const [shelf, setShelf] = useState<'all' | 'mine'>('all');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [moods, setMoods] = useState<Set<Mood>>(new Set());
   const [times, setTimes] = useState<Set<TimeOfDay>>(new Set());
@@ -63,10 +70,12 @@ export default function BrowseScreen() {
   const [setting, setSetting] = useState<Idea['setting'] | null>(null);
   const [energy, setEnergy] = useState<Energy | null>(null);
   const [stayClose, setStayClose] = useState(false); // walking distance = no travel
+  const [inspecting, setInspecting] = useState<Idea | null>(null);
+  const [scheduling, setScheduling] = useState<Idea | null>(null);
 
-  const allIdeas = useMemo(() => getAllIdeas(), []);
-  const weatherChip = currentChip();
-  const badWeather = currentOutlook() === 'bad';
+  // Reload on focus so freshly added "My ideas" show up immediately.
+  const [allIdeas, setAllIdeas] = useState<Idea[]>([]);
+  useFocusEffect(useCallback(() => setAllIdeas(getAllIdeas()), []));
 
   const toggleMood = (mood: Mood) =>
     setMoods((current) => {
@@ -108,6 +117,7 @@ export default function BrowseScreen() {
   const ideas = useMemo(
     () =>
       allIdeas.filter((idea) => {
+        if (shelf === 'mine' && idea.source !== 'user') return false;
         if (moods.size > 0 && !idea.moods.some((m) => moods.has(m))) return false;
         if (times.size > 0 && !idea.timeOfDay.some((t) => times.has(t))) return false;
         if (maxCost !== null && idea.costTier > maxCost) return false;
@@ -118,8 +128,23 @@ export default function BrowseScreen() {
         if (stayClose && idea.requiresTravel) return false;
         return true;
       }),
-    [allIdeas, moods, times, maxCost, maxDuration, group, setting, energy, stayClose]
+    [allIdeas, shelf, moods, times, maxCost, maxDuration, group, setting, energy, stayClose]
   );
+
+  // "Do this idea 💫": schedule it, make it the pending moment, land on home.
+  const doThisIdea = () => {
+    if (!inspecting) return;
+    setScheduling(inspecting);
+    setInspecting(null);
+  };
+
+  const confirmSchedule = (date: Date | null) => {
+    if (!scheduling) return;
+    createMoment(scheduling, date);
+    hapticReveal();
+    setScheduling(null);
+    router.navigate('/');
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -143,14 +168,19 @@ export default function BrowseScreen() {
                   pressed && { transform: [{ scale: 0.96 }] },
                 ]}
               >
-                <Text style={[styles.filtersPillText, activeCount > 0 && styles.filtersPillTextActive]}>
+                <Text
+                  style={[styles.filtersPillText, activeCount > 0 && styles.filtersPillTextActive]}
+                >
                   Filters {activeCount > 0 ? `· ${activeCount}` : ''} {filtersOpen ? '⌃' : '⌄'}
                 </Text>
               </Pressable>
             </View>
-            <Text style={styles.count}>
-              {ideas.length} idea{ideas.length === 1 ? '' : 's'}
-            </Text>
+
+            <View style={styles.shelfRow}>
+              <ShelfTab label="All ideas" active={shelf === 'all'} onPress={() => setShelf('all')} />
+              <ShelfTab label="My ideas ✨" active={shelf === 'mine'} onPress={() => setShelf('mine')} />
+              <Text style={styles.count}>{ideas.length}</Text>
+            </View>
 
             {filtersOpen && (
               <View style={styles.panel}>
@@ -238,31 +268,70 @@ export default function BrowseScreen() {
           </View>
         }
         ListEmptyComponent={
-          <Text style={styles.empty}>Nothing matches that combo — loosen a filter or two.</Text>
-        }
-        renderItem={({ item, index }) => {
-          const color = candyOrder[index % candyOrder.length];
-          const outdoor = item.setting === 'outdoor';
-          return (
-            <View style={[styles.card, { backgroundColor: color.fill, borderColor: color.border }]}>
-              <Text style={styles.cardIcon}>{iconEmoji(item.icon)}</Text>
-              <Text style={[styles.cardTitle, { color: color.text }]} numberOfLines={3}>
-                {item.title}
-              </Text>
-              <View style={styles.badgeRow}>
-                <Badge color={color.border} text={durationLabel(item.durationMin)} />
-                <Badge color={color.border} text={item.costTier === 0 ? 'free' : '$'.repeat(item.costTier)} />
-                {item.source === 'user' && <Badge color={color.border} text="yours ✨" />}
-                {outdoor && weatherChip && <Badge color={color.border} text={weatherChip} />}
-                {outdoor && item.weatherSensitive && badWeather && (
-                  <Badge color={candy.coral.border} text="☔ indoors today" />
-                )}
-              </View>
+          shelf === 'mine' && activeCount === 0 ? (
+            <View style={styles.emptyWrap}>
+              <Text style={styles.empty}>No ideas of your own yet.</Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.navigate('/add-idea')}
+                style={({ pressed }) => [styles.emptyLink, pressed && { opacity: 0.6 }]}
+              >
+                <Text style={styles.emptyLinkText}>💡 add your first one</Text>
+              </Pressable>
             </View>
-          );
-        }}
+          ) : (
+            <Text style={styles.empty}>Nothing matches that combo — loosen a filter or two.</Text>
+          )
+        }
+        renderItem={({ item }) => (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${item.title}. Tap for details.`}
+            onPress={() => setInspecting(item)}
+            style={({ pressed }) => [styles.card, pressed && { transform: [{ scale: 0.97 }] }]}
+          >
+            <IconHalo emoji={iconEmoji(item.icon)} size="s" />
+            <Text style={styles.cardTitle} numberOfLines={2}>
+              {item.title}
+            </Text>
+            <Text style={styles.cardMeta}>
+              {durationLabel(item.durationMin)} · {item.costTier === 0 ? 'free' : '$'.repeat(item.costTier)}
+              {item.source === 'user' ? ' · ✨' : ''}
+            </Text>
+          </Pressable>
+        )}
+      />
+
+      <IdeaDetailModal
+        idea={inspecting}
+        actionLabel="Do this idea 💫"
+        onAction={doThisIdea}
+        onClose={() => setInspecting(null)}
+      />
+      <ScheduleSheet
+        visible={scheduling !== null}
+        ideaTitle={scheduling?.title ?? ''}
+        onConfirm={confirmSchedule}
+        onClose={() => setScheduling(null)}
       />
     </SafeAreaView>
+  );
+}
+
+function ShelfTab({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.shelfTab,
+        active && styles.shelfTabActive,
+        pressed && { opacity: 0.8 },
+      ]}
+    >
+      <Text style={[styles.shelfTabText, active && styles.shelfTabTextActive]}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -275,27 +344,19 @@ function FilterRow({ label, children }: { label: string; children: React.ReactNo
   );
 }
 
-function Badge({ color, text }: { color: string; text: string }) {
-  return (
-    <View style={[styles.badge, { borderColor: color }]}>
-      <Text style={[styles.badgeText, { color }]}>{text}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
   },
   list: {
-    padding: 20,
+    padding: 22,
     gap: 12,
   },
   column: {
     gap: 12,
   },
   header: {
-    gap: 8,
+    gap: 12,
     marginBottom: 8,
   },
   titleRow: {
@@ -306,55 +367,78 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 30,
-    fontWeight: '900',
+    fontWeight: '700',
     color: ink,
+    letterSpacing: 0.3,
   },
   filtersPill: {
-    borderWidth: borders.width,
-    borderColor: ink,
     borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    backgroundColor: canvas,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: surface,
     minHeight: 44,
     justifyContent: 'center',
+    ...softShadow,
+    shadowOpacity: 0.08,
   },
   filtersPillActive: {
-    backgroundColor: candy.teal.fill,
-    borderColor: candy.teal.border,
+    backgroundColor: accent,
   },
   filtersPillText: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '600',
     color: ink,
   },
   filtersPillTextActive: {
-    color: candy.teal.text,
+    color: '#FFFFFF',
+  },
+  shelfRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  shelfTab: {
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    minHeight: 40,
+    justifyContent: 'center',
+  },
+  shelfTabActive: {
+    backgroundColor: 'rgba(231, 109, 142, 0.16)',
+  },
+  shelfTabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: inkSoft,
+  },
+  shelfTabTextActive: {
+    color: accent,
   },
   count: {
-    fontSize: 14,
-    color: ink,
-    opacity: 0.6,
+    marginLeft: 'auto',
+    fontSize: 13,
+    fontWeight: '600',
+    color: inkSoft,
   },
   panel: {
-    borderWidth: borders.width,
-    borderColor: ink,
+    backgroundColor: surface,
     borderRadius: borders.radius,
-    backgroundColor: canvas,
-    padding: 14,
+    padding: 16,
     gap: 12,
-    marginTop: 4,
+    ...softShadow,
+    shadowOpacity: 0.08,
   },
   filterRow: {
     gap: 6,
   },
   filterLabel: {
     fontSize: 12,
-    fontWeight: '800',
-    color: ink,
-    opacity: 0.7,
+    fontWeight: '700',
+    color: inkSoft,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   filterChips: {
     flexDirection: 'row',
@@ -369,47 +453,53 @@ const styles = StyleSheet.create({
   },
   clearText: {
     fontSize: 13,
-    fontWeight: '700',
-    color: ink,
-    opacity: 0.5,
+    fontWeight: '600',
+    color: inkSoft,
+  },
+  emptyWrap: {
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 24,
   },
   empty: {
     textAlign: 'center',
-    color: ink,
-    opacity: 0.6,
+    color: inkSoft,
     fontSize: 15,
     marginTop: 24,
+    lineHeight: 22,
+  },
+  emptyLink: {
+    padding: 10,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  emptyLinkText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: accent,
   },
   card: {
     flex: 1,
-    borderWidth: borders.width,
+    backgroundColor: surface,
     borderRadius: borders.radius,
-    padding: 14,
-    gap: 6,
+    padding: 16,
+    alignItems: 'center',
+    gap: 8,
     minHeight: 150,
-  },
-  cardIcon: {
-    fontSize: 32,
+    ...softShadow,
+    shadowOpacity: 0.08,
   },
   cardTitle: {
-    fontSize: 15,
-    fontWeight: '800',
+    fontSize: 14,
+    fontWeight: '700',
     lineHeight: 19,
+    color: ink,
+    textAlign: 'center',
     flexGrow: 1,
   },
-  badgeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 5,
-  },
-  badge: {
-    borderWidth: 2,
-    borderRadius: 999,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: '700',
+  cardMeta: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: inkSoft,
   },
 });

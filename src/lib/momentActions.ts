@@ -18,30 +18,44 @@ import {
   insertIdea,
   insertMoment,
   saveProfile,
+  setMomentSchedule,
   updateMoment,
 } from '@/lib/db/database';
 import type { Idea, Moment } from '@/lib/types';
 
-const ASK_DELAY_MS = 3 * 60 * 60 * 1000; // the "did it happen?" flip: ≥3h…
+const ASK_DELAY_MS = 3 * 60 * 60 * 1000; // unscheduled fallback: ≥3h…
 
-/** …or the next calendar day, whichever comes first. */
+/**
+ * When does the "did it happen?" check-in appear? Scheduled moments flip once
+ * their time passes; unscheduled ones after ≥3h or the next calendar day.
+ */
 export function readyToAsk(moment: Moment, now: Date = new Date()): boolean {
+  if (moment.scheduledFor) {
+    return now.getTime() >= new Date(moment.scheduledFor).getTime();
+  }
   const created = new Date(moment.createdAt);
   if (now.getTime() - created.getTime() >= ASK_DELAY_MS) return true;
   return now.toDateString() !== created.toDateString();
 }
 
-/** "Let's do it!" — commit to one idea. Replaces any existing pending moment. */
-export function createMoment(idea: Idea): Moment {
+/** "Let's do it!" — commit to one idea, optionally at a chosen date & time.
+ * Replaces any existing pending moment. */
+export function createMoment(idea: Idea, scheduledFor?: Date | null): Moment {
   dismissPendingMoments();
   const moment: Moment = {
     id: `moment-${Date.now()}`,
     ideaId: idea.id,
     status: 'pending',
     createdAt: new Date().toISOString(),
+    scheduledFor: scheduledFor ? scheduledFor.toISOString() : undefined,
   };
   insertMoment(moment);
   return moment;
+}
+
+/** Edit (or clear) a moment's date & time. */
+export function rescheduleMoment(momentId: string, scheduledFor: Date | null): void {
+  setMomentSchedule(momentId, scheduledFor ? scheduledFor.toISOString() : null);
 }
 
 function applyIdeaFeedback(ideaId: string, rating: 1 | 2 | 3 | 4 | 5 | undefined): void {
@@ -96,6 +110,7 @@ export async function pickAndAttachPhoto(momentId: string): Promise<boolean> {
 export interface NewIdeaInput {
   title: string;
   description: string;
+  icon: string; // the emoji the user picked
   moods: Idea['moods'];
   setting: Idea['setting'];
   costTier: Idea['costTier'];
@@ -119,7 +134,7 @@ export function addUserIdea(input: NewIdeaInput): Idea {
     timeOfDay: ['morning', 'afternoon', 'evening', 'night'], // user ideas fit any time
     weatherSensitive: input.setting === 'outdoor',
     requiresTravel: false,
-    icon: 'sparkles',
+    icon: input.icon,
     source: 'user',
     createdAt: new Date().toISOString(),
     broadAppeal: 0.5,
