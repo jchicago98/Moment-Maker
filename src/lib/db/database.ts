@@ -118,15 +118,18 @@ export function initDatabase(): void {
       scheduledFor TEXT,
       confirmedAt TEXT,
       rating INTEGER,
-      photoUri TEXT
+      photoUri TEXT,
+      note TEXT
     );
   `);
 
-  // Dev installs created before scheduling existed: best-effort add.
-  try {
-    db.execSync('ALTER TABLE moments ADD COLUMN scheduledFor TEXT;');
-  } catch {
-    // column already exists
+  // Dev installs created before these columns existed: best-effort adds.
+  for (const column of ['scheduledFor TEXT', 'note TEXT']) {
+    try {
+      db.execSync(`ALTER TABLE moments ADD COLUMN ${column};`);
+    } catch {
+      // column already exists
+    }
   }
 
   seedIfEmpty();
@@ -463,6 +466,7 @@ interface MomentRow {
   confirmedAt: string | null;
   rating: number | null;
   photoUri: string | null;
+  note: string | null;
 }
 
 function rowToMoment(row: MomentRow): Moment {
@@ -475,6 +479,7 @@ function rowToMoment(row: MomentRow): Moment {
     confirmedAt: row.confirmedAt ?? undefined,
     rating: (row.rating ?? undefined) as Moment['rating'],
     photoUri: row.photoUri ?? undefined,
+    note: row.note ?? undefined,
   };
 }
 
@@ -527,17 +532,36 @@ export function dismissPendingMoments(): void {
 
 export function updateMoment(
   id: string,
-  fields: { status?: Moment['status']; confirmedAt?: string; rating?: 1 | 2 | 3 | 4 | 5; photoUri?: string }
+  fields: {
+    status?: Moment['status'];
+    confirmedAt?: string;
+    rating?: 1 | 2 | 3 | 4 | 5;
+    photoUri?: string;
+    note?: string;
+  }
 ): void {
   db.runSync(
     `UPDATE moments SET
        status = COALESCE(?, status),
        confirmedAt = COALESCE(?, confirmedAt),
        rating = COALESCE(?, rating),
-       photoUri = COALESCE(?, photoUri)
+       photoUri = COALESCE(?, photoUri),
+       note = COALESCE(?, note)
      WHERE id = ?`,
-    [fields.status ?? null, fields.confirmedAt ?? null, fields.rating ?? null, fields.photoUri ?? null, id]
+    [
+      fields.status ?? null,
+      fields.confirmedAt ?? null,
+      fields.rating ?? null,
+      fields.photoUri ?? null,
+      fields.note ?? null,
+      id,
+    ]
   );
+}
+
+/** Tear a page out of the journal — the moment is gone for good. */
+export function deleteMoment(id: string): void {
+  db.runSync('DELETE FROM moments WHERE id = ?', [id]);
 }
 
 /** The scrapbook: confirmed moments only, newest first. */

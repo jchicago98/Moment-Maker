@@ -17,13 +17,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BigButton } from '@/components/BigButton';
 import { ConfettiBurst } from '@/components/ConfettiBurst';
+import { IdeaEtching } from '@/components/IdeaEtching';
 import { ScheduleSheet } from '@/components/ScheduleSheet';
 import { playDealIn, playGiftKnock, playRevealMelody } from '@/lib/audio/soundEngine';
 import { daypartWord } from '@/lib/daypart';
 import { hapticReveal } from '@/lib/haptics';
 import { createMoment } from '@/lib/momentActions';
 import { useSession } from '@/lib/store/session';
-import { accent, borders, capsLabel, fonts, ink, inkHead, inkSoft, line, surface } from '@/lib/theme';
+import { accent, borders, capsLabel, fonts, ideaHue, ink, inkHead, inkSoft, line, surface } from '@/lib/theme';
 
 function durationLabel(min: number): string {
   if (min < 60) return `${min} min`;
@@ -90,7 +91,8 @@ export default function RevealScreen() {
               entering={reduceMotion ? FadeIn : FadeInUp.delay(250).springify().damping(13)}
               style={styles.ideaCard}
             >
-              <Text style={styles.meta}>
+              <IdeaEtching icon={idea.icon} hue={ideaHue(idea.moods)} size={180} opacity={0.11} />
+              <Text style={[styles.meta, { color: ideaHue(idea.moods) }]}>
                 {idea.moods.join(' · ')} · {durationLabel(idea.durationMin)} ·{' '}
                 {idea.costTier === 0 ? 'free' : '$'.repeat(idea.costTier)}
               </Text>
@@ -269,6 +271,7 @@ const styles = StyleSheet.create({
     borderRadius: borders.radius,
     padding: 24,
     gap: 10,
+    overflow: 'hidden', // crops the etching at the card edge
   },
   meta: {
     ...capsLabel,

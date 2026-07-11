@@ -23,4 +23,13 @@ module.exports = defineConfig([
       "react-hooks/purity": "off",
     },
   },
+  {
+    // ideaIcon() is a static Record lookup, not a component factory — the
+    // returned Lucide component is module-stable, so rendering it is safe.
+    // The rule can't see through the lookup.
+    files: ["src/components/IdeaEtching.tsx"],
+    rules: {
+      "react-hooks/static-components": "off",
+    },
+  },
 ]);

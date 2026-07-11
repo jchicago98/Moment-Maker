@@ -1,37 +1,35 @@
-import { Image } from 'expo-image';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp, useReducedMotion } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { IconBox } from '@/components/IconBox';
+import { IdeaEtching } from '@/components/IdeaEtching';
+import { JournalEntrySheet } from '@/components/JournalEntrySheet';
 import { getDoneMoments, type MomentWithIdea } from '@/lib/db/database';
-import { hapticReveal } from '@/lib/haptics';
-import { iconEmoji } from '@/lib/icons';
-import { pickAndAttachPhoto, rateMoment } from '@/lib/momentActions';
-import { accent, borders, capsLabel, fonts, inkHead, inkSoft, line, rule, surface } from '@/lib/theme';
+import { accent, borders, capsLabel, fonts, ideaHue, inkFaint, inkHead, inkSoft, line, rule, surface } from '@/lib/theme';
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+function formatDateTime(iso: string): string {
+  const date = new Date(iso);
+  const day = date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+  const time = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  return `${day} · ${time}`;
 }
 
 export default function JournalScreen() {
   const reduceMotion = useReducedMotion();
   const [entries, setEntries] = useState<MomentWithIdea[]>([]);
+  const [openEntry, setOpenEntry] = useState<MomentWithIdea | null>(null);
 
-  const refresh = useCallback(() => setEntries(getDoneMoments()), []);
+  const refresh = useCallback(() => {
+    const done = getDoneMoments();
+    setEntries(done);
+    // Keep the open sheet in sync (e.g. after a photo or rating change).
+    setOpenEntry((current) =>
+      current ? (done.find((e) => e.moment.id === current.moment.id) ?? null) : null
+    );
+  }, []);
   useFocusEffect(refresh);
-
-  const rate = (momentId: string, stars: 1 | 2 | 3 | 4 | 5) => {
-    rateMoment(momentId, stars);
-    hapticReveal();
-    refresh();
-  };
-
-  const addPhoto = async (momentId: string) => {
-    if (await pickAndAttachPhoto(momentId)) refresh();
-  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -52,7 +50,7 @@ export default function JournalScreen() {
         }
         renderItem={({ item, index }) => {
           const { moment, idea } = item;
-          const rating = moment.rating;
+          const hue = ideaHue(idea.moods);
           return (
             <Animated.View
               entering={
@@ -61,61 +59,37 @@ export default function JournalScreen() {
                   : FadeInUp.delay(Math.min(index, 6) * 70).springify().damping(15)
               }
             >
-              <View style={styles.card}>
-                <View style={styles.cardBody}>
-                  <IconBox emoji={iconEmoji(idea.icon)} size="s" />
-                  <View style={styles.cardTextWrap}>
-                    <Text style={styles.cardDate}>
-                      {formatDate(moment.confirmedAt ?? moment.createdAt)}
-                    </Text>
-                    <Text style={styles.cardTitle}>{idea.title}</Text>
-                  </View>
-                </View>
-
-                {moment.photoUri && (
-                  <Image
-                    source={{ uri: moment.photoUri }}
-                    style={styles.photo}
-                    contentFit="cover"
-                    accessibilityLabel="Your photo of this moment"
-                  />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Open journal entry for ${idea.title}`}
+                onPress={() => setOpenEntry(item)}
+                style={({ pressed }) => [styles.card, pressed && { opacity: 0.75 }]}
+              >
+                <IdeaEtching icon={idea.icon} hue={hue} size={110} opacity={0.11} />
+                <Text style={[styles.cardDate, { color: hue }]}>
+                  {formatDateTime(moment.confirmedAt ?? moment.createdAt)}
+                </Text>
+                <Text style={styles.cardTitle}>{idea.title}</Text>
+                {moment.rating ? (
+                  <Text style={styles.stars}>
+                    {'★'.repeat(moment.rating)}
+                    <Text style={styles.starsDim}>{'★'.repeat(5 - moment.rating)}</Text>
+                  </Text>
+                ) : null}
+                {moment.note ? (
+                  <Text style={styles.note} numberOfLines={2}>
+                    “{moment.note}”
+                  </Text>
+                ) : (
+                  <Text style={styles.noteHint}>add a note for future you →</Text>
                 )}
-
-                <View style={styles.cardFooter}>
-                  <View style={styles.starRow}>
-                    {([1, 2, 3, 4, 5] as const).map((stars) => (
-                      <Pressable
-                        key={stars}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Rate ${stars} star${stars > 1 ? 's' : ''}`}
-                        onPress={() => rate(moment.id, stars)}
-                        hitSlop={6}
-                        style={styles.star}
-                      >
-                        <Text
-                          style={[styles.starText, !(rating && stars <= rating) && styles.starDim]}
-                        >
-                          ★
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                  {!moment.photoUri && (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Add a photo"
-                      onPress={() => addPhoto(moment.id)}
-                      style={({ pressed }) => [styles.photoLink, pressed && { opacity: 0.6 }]}
-                    >
-                      <Text style={styles.photoLinkText}>Add a photograph →</Text>
-                    </Pressable>
-                  )}
-                </View>
-              </View>
+              </Pressable>
             </Animated.View>
           );
         }}
       />
+
+      <JournalEntrySheet entry={openEntry} onChanged={refresh} onClose={() => setOpenEntry(null)} />
     </SafeAreaView>
   );
 }
@@ -153,16 +127,8 @@ const styles = StyleSheet.create({
     borderColor: line,
     borderRadius: borders.radius,
     padding: 16,
-    gap: 12,
-  },
-  cardBody: {
-    flexDirection: 'row',
-    gap: 14,
-    alignItems: 'center',
-  },
-  cardTextWrap: {
-    flex: 1,
-    gap: 3,
+    gap: 6,
+    overflow: 'hidden', // crops the etching at the card edge
   },
   cardDate: {
     ...capsLabel,
@@ -171,43 +137,33 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontFamily: fonts.serif,
-    fontSize: 18,
-    lineHeight: 23,
+    fontSize: 19,
+    lineHeight: 24,
     color: inkHead,
   },
-  photo: {
-    height: 150,
-    borderRadius: borders.radiusSmall,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  starRow: {
-    flexDirection: 'row',
-  },
-  star: {
-    minWidth: 32,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  starText: {
-    fontSize: 18,
+  stars: {
+    fontSize: 13,
+    letterSpacing: 2.5,
     color: accent,
   },
-  starDim: {
+  starsDim: {
     color: rule,
   },
-  photoLink: {
-    minHeight: 44,
-    justifyContent: 'center',
+  note: {
+    fontFamily: fonts.serifItalic,
+    fontSize: 13.5,
+    lineHeight: 20,
+    color: inkSoft,
+    borderTopWidth: 1,
+    borderTopColor: rule,
+    paddingTop: 9,
+    marginTop: 4,
   },
-  photoLinkText: {
-    fontSize: 12.5,
+  noteHint: {
+    fontSize: 12,
     fontWeight: '600',
-    color: accent,
+    color: inkFaint,
     letterSpacing: 0.3,
+    marginTop: 4,
   },
 });

@@ -1,7 +1,8 @@
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BigButton } from '@/components/BigButton';
-import { accent, borders, capsLabel, fonts, ink, inkHead, inkSoft, line, surface, warnFill, warnText } from '@/lib/theme';
+import { IdeaEtching } from '@/components/IdeaEtching';
+import { accent, borders, capsLabel, fonts, ideaHue, ink, inkHead, inkSoft, line, surface, warnFill, warnText } from '@/lib/theme';
 import { currentChip, currentOutlook } from '@/lib/weather';
 import type { Idea } from '@/lib/types';
 
@@ -40,8 +41,9 @@ export function IdeaDetailModal({ idea, actionLabel, onAction, onClose }: Props)
             onPress={() => {}}
             style={styles.card}
           >
+            <IdeaEtching icon={idea.icon} hue={ideaHue(idea.moods)} size={190} opacity={0.1} />
             <ScrollView contentContainerStyle={styles.content}>
-              <Text style={styles.meta}>
+              <Text style={[styles.meta, { color: ideaHue(idea.moods) }]}>
                 {idea.moods.join(' · ')} · {durationLabel(idea.durationMin)} ·{' '}
                 {idea.costTier === 0 ? 'free' : '$'.repeat(idea.costTier)}
               </Text>
@@ -102,6 +104,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: line,
     borderRadius: borders.radius,
+    overflow: 'hidden', // crops the etching at the card edge
   },
   content: {
     padding: 26,

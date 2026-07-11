@@ -10,16 +10,17 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useEffect } from 'react';
 
-import { playPickup, playThrowLock, playTick } from '@/lib/audio/soundEngine';
+import { IdeaEtching } from '@/components/IdeaEtching';
+import { playThrowLock } from '@/lib/audio/soundEngine';
 import { hapticPickup, hapticThrow } from '@/lib/haptics';
-import { borders, capsLabel, fonts, inkHead, inkSoft, line, surface } from '@/lib/theme';
+import { borders, capsLabel, fonts, ideaHue, inkHead, inkSoft, line, surface } from '@/lib/theme';
 import type { Idea } from '@/lib/types';
 
 // Lock-in thresholds (CLAUDE.md §5.3): velocity OR displacement wins.
 const THROW_VELOCITY = 900; // px/s
 const THROW_DISTANCE = 120; // pt
 const FLY_DISTANCE = 1000; // px, comfortably off any screen
-const MAX_TICK_SPEED = 2500; // px/s ≈ intensity 1.0
+const MAX_THROW_SPEED = 2500; // px/s ≈ intensity 1.0
 
 export type CardResolution = 'winner' | 'loser' | null;
 
@@ -34,11 +35,6 @@ interface Props {
   onPick: (throwVelocity: number) => void;
   /** Tap = peek: opens the detail view (picking happens there or by throw). */
   onInspect: () => void;
-}
-
-function pickupFeedback(): void {
-  playPickup();
-  hapticPickup();
 }
 
 function lockFeedback(intensity: number): void {
@@ -75,7 +71,6 @@ export function DraggableIdeaCard({
   const held = useSharedValue(false);
   const flew = useSharedValue(false);
   const opacity = useSharedValue(1);
-  const lastTick = useSharedValue(0);
 
   // Parent resolves the round: the loser fades; a tap-picked winner still
   // gets its little victory flight (unless motion is reduced).
@@ -105,21 +100,12 @@ export function DraggableIdeaCard({
     .minDistance(8)
     .onBegin(() => {
       held.value = true;
-      runOnJS(pickupFeedback)();
+      // Dragging is silent — a light haptic is the only pickup feedback.
+      runOnJS(hapticPickup)();
     })
     .onUpdate((e) => {
       tx.value = e.translationX;
       ty.value = e.translationY;
-
-      // Felt-piano ticks: rate and pitch scale with drag velocity — sparse
-      // low notes for slow drags, a rising run for confident flings.
-      const speed = Math.hypot(e.velocityX, e.velocityY);
-      const interval = Math.max(70, 400 - speed * 0.15);
-      const now = Date.now();
-      if (now - lastTick.value > interval) {
-        lastTick.value = now;
-        runOnJS(playTick)(Math.min(1, speed / MAX_TICK_SPEED));
-      }
     })
     .onEnd((e) => {
       const speed = Math.hypot(e.velocityX, e.velocityY);
@@ -133,7 +119,7 @@ export function DraggableIdeaCard({
         const ny = (useVelocity ? e.velocityY / speed : ty.value / displacement) || 1;
         tx.value = withTiming(nx * FLY_DISTANCE, { duration: 220, easing: Easing.out(Easing.quad) });
         ty.value = withTiming(ny * FLY_DISTANCE, { duration: 220, easing: Easing.out(Easing.quad) });
-        const intensity = Math.min(1, speed / MAX_TICK_SPEED);
+        const intensity = Math.min(1, speed / MAX_THROW_SPEED);
         runOnJS(lockFeedback)(intensity);
         runOnJS(onPick)(speed);
       } else {
@@ -170,8 +156,10 @@ export function DraggableIdeaCard({
     };
   });
 
-  // Editorial face: category line, serif title, italic one-liner. Details
-  // live in the tap-to-peek modal.
+  // Editorial face: the idea's own etching ghosted in its mood ink, category
+  // line in the same ink, serif title, italic one-liner. Details live in the
+  // tap-to-peek modal.
+  const hue = ideaHue(idea.moods);
   return (
     <GestureDetector gesture={gesture}>
       <Animated.View
@@ -180,7 +168,8 @@ export function DraggableIdeaCard({
         accessibilityLabel={`${idea.title}. Tap to read more, throw off screen to pick.`}
         style={[styles.card, animatedStyle]}
       >
-        <Text style={styles.category}>{categoryLine(idea)}</Text>
+        <IdeaEtching icon={idea.icon} hue={hue} size={120} />
+        <Text style={[styles.category, { color: hue }]}>{categoryLine(idea)}</Text>
         <Text style={styles.title} numberOfLines={2}>
           {idea.title}
         </Text>
@@ -202,6 +191,7 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     paddingHorizontal: 18,
     gap: 7,
+    overflow: 'hidden', // crops the etching at the card edge
   },
   category: {
     ...capsLabel,

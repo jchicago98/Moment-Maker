@@ -87,6 +87,12 @@ export function rateMoment(momentId: string, rating: 1 | 2 | 3 | 4 | 5): void {
   updateMoment(momentId, { rating });
 }
 
+/** Save the user's written reflection. Record-only — words aren't a rating,
+ * so no learning update. */
+export function setMomentNote(momentId: string, note: string): void {
+  updateMoment(momentId, { note });
+}
+
 /** Pick a photo and attach it, copied into app documents so the memory
  * outlives the picker cache. Returns true if a photo was attached. */
 export async function pickAndAttachPhoto(momentId: string): Promise<boolean> {

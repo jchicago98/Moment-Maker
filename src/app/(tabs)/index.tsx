@@ -22,14 +22,35 @@ import {
   readyToAsk,
   rescheduleMoment,
 } from '@/lib/momentActions';
-import { accent, capsLabel, fonts, ink, inkFaint, inkHead, inkSoft, rule } from '@/lib/theme';
+import { IdeaEtching } from '@/components/IdeaEtching';
+import { accent, capsLabel, daypartOf, fonts, ideaHue, ink, inkFaint, inkHead, inkSoft, rule } from '@/lib/theme';
 import { currentChip } from '@/lib/weather';
+import type { Moment } from '@/lib/types';
 
 function dateline(): string {
   const now = new Date();
   const day = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
   const weather = currentChip();
   return weather ? `${day} · ${weather}` : day;
+}
+
+/** The eyebrow above a planned moment, derived from its schedule — never a
+ * hardcoded "This evening" at nine in the morning. */
+function momentEyebrow(moment: Moment): string {
+  if (!moment.scheduledFor) return 'Up next';
+  const date = new Date(moment.scheduledFor);
+  const today = new Date();
+  const tomorrow = new Date();
+  tomorrow.setDate(today.getDate() + 1);
+  if (date.toDateString() === today.toDateString()) {
+    const daypart = daypartOf(date);
+    if (daypart === 'morning') return 'This morning';
+    if (daypart === 'day') return 'This afternoon';
+    if (daypart === 'dusk') return 'This evening';
+    return 'Tonight';
+  }
+  if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
+  return `For ${date.toLocaleDateString([], { weekday: 'long' })}`;
 }
 
 function scheduleLine(scheduledFor?: string): string {
@@ -112,7 +133,13 @@ export default function HomeScreen() {
         <Text style={capsLabel}>{dateline()}</Text>
 
         {celebrating ? (
-          <View style={styles.block}>
+          <View style={[styles.block, styles.etched]}>
+            <IdeaEtching
+              icon={celebrating.idea.icon}
+              hue={ideaHue(celebrating.idea.moods)}
+              size={230}
+              opacity={0.09}
+            />
             <Text style={styles.headline}>Into the journal it goes.</Text>
             <Text style={styles.sub}>{celebrating.idea.title}</Text>
             <View style={styles.starRow}>
@@ -141,9 +168,15 @@ export default function HomeScreen() {
             </Pressable>
           </View>
         ) : pending ? (
-          <View style={styles.block}>
-            <Text style={[capsLabel, { color: accent }]}>
-              {asking ? 'Checking in' : 'This evening'}
+          <View style={[styles.block, styles.etched]}>
+            <IdeaEtching
+              icon={pending.idea.icon}
+              hue={ideaHue(pending.idea.moods)}
+              size={230}
+              opacity={0.09}
+            />
+            <Text style={[capsLabel, { color: ideaHue(pending.idea.moods) }]}>
+              {asking ? 'Checking in' : momentEyebrow(pending.moment)}
             </Text>
             <Text style={styles.headline}>
               {asking ? `So — did “${pending.idea.title}” happen?` : pending.idea.title}
@@ -247,6 +280,9 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     gap: 12,
+  },
+  etched: {
+    overflow: 'hidden', // crops the ghost drawing at the block edge
   },
   headline: {
     fontFamily: fonts.serif,

@@ -5,6 +5,8 @@
 
 import type { TextStyle } from 'react-native';
 
+import type { Mood } from '@/lib/types';
+
 // Ground & text
 export const ground = '#191613'; // warm near-black
 export const ink = '#EAE3D6'; // cream — primary text
@@ -17,12 +19,32 @@ export const surface = '#211E19'; // cards, sheets, tab bar rows
 export const surfaceDeep = '#14120F'; // tab bar
 export const line = '#37322A'; // 1px card hairlines
 export const rule = '#322E27'; // horizontal rules, progress tracks
-export const iconWell = '#241F1A'; // IconBox background
+export const iconWell = '#241F1A'; // recessed input/well background
 
 // Accent
 export const accent = '#C25B4E'; // ember red — links, stars, progress, active
 export const warnFill = '#3A2620'; // bad-weather chip ground
 export const warnText = '#D98B76';
+
+// Section inks: every mood owns a muted editorial hue, used for the idea's
+// watermark etching and its category line — like a broadsheet's sections.
+export const moodHue: Record<Mood, string> = {
+  cozy: '#C09059', // amber
+  active: '#6E9E8A', // viridian
+  silly: '#C77E52', // tangerine
+  romantic: '#B0616F', // wine
+  adventurous: '#A9714A', // copper
+  creative: '#9B7FB5', // heliotrope
+  chill: '#7A93AD', // slate
+  social: '#B57A8E', // dusty rose
+  tasty: '#C9A03C', // saffron
+  calm: '#8FA687', // sage
+};
+
+/** An idea's ink comes from its first (primary) mood. */
+export function ideaHue(moods: readonly Mood[]): string {
+  return moodHue[moods[0]] ?? accent;
+}
 
 // Type
 export const fonts = {

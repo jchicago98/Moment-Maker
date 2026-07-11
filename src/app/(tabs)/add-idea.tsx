@@ -5,17 +5,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BigButton } from '@/components/BigButton';
 import { Chip } from '@/components/Chip';
-import { IconBox } from '@/components/IconBox';
+import { IdeaEtching } from '@/components/IdeaEtching';
 import { hapticReveal } from '@/lib/haptics';
+import { ideaIcon, WATERMARK_CHOICES } from '@/lib/icons';
 import { addUserIdea } from '@/lib/momentActions';
-import { borders, capsLabel, fonts, iconWell, ink, inkHead, line, surface } from '@/lib/theme';
+import { accent, borders, capsLabel, fonts, ideaHue, ink, inkHead, inkSoft, line, surface } from '@/lib/theme';
 import { ALL_MOODS, type Energy, type GroupType, type Idea, type Mood } from '@/lib/types';
-
-const ICON_CHOICES = [
-  '✨', '🍕', '🎨', '🎬', '🥾', '🎲', '📚', '🎤',
-  '🧺', '🌅', '🏕️', '🍦', '🎮', '🌊', '🚴', '📸',
-  '🎭', '🧘', '🍰', '🌮', '🎳', '🛶', '🌸', '🔥',
-];
 
 const settings: { value: Idea['setting']; label: string }[] = [
   { value: 'indoor', label: 'Indoors' },
@@ -54,13 +49,15 @@ export default function AddIdeaScreen() {
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [icon, setIcon] = useState('✨');
+  const [icon, setIcon] = useState('sparkles');
   const [moods, setMoods] = useState<Mood[]>([]);
   const [setting, setSetting] = useState<Idea['setting']>('either');
   const [costTier, setCostTier] = useState<Idea['costTier']>(0);
   const [durationMin, setDurationMin] = useState(60);
   const [groupFit, setGroupFit] = useState<GroupType[]>(['couple']);
   const [energy, setEnergy] = useState<Energy>(1);
+
+  const previewHue = moods.length > 0 ? ideaHue(moods) : accent;
 
   const toggleMood = (mood: Mood) => {
     setMoods((current) =>
@@ -106,7 +103,7 @@ export default function AddIdeaScreen() {
     // It's a tab: clear the form for next time and hop back to home.
     setTitle('');
     setDescription('');
-    setIcon('✨');
+    setIcon('sparkles');
     setMoods([]);
     Alert.alert('Added to the collection', 'It joins the deck — and taught us a little about you.', [
       { text: 'Lovely', onPress: () => router.navigate('/') },
@@ -119,21 +116,36 @@ export default function AddIdeaScreen() {
         <Text style={capsLabel}>A contribution of your own</Text>
         <Text style={styles.title}>Add an idea</Text>
 
-        <View style={styles.iconSection}>
-          <IconBox emoji={icon} size="m" />
+        {/* Live preview: the idea exactly as it will appear in the deck. */}
+        <View style={styles.preview}>
+          <IdeaEtching icon={icon} hue={previewHue} size={110} opacity={0.13} />
+          <Text style={[styles.previewCategory, { color: previewHue }]}>
+            {moods.length > 0 ? moods.join(' · ') : 'your idea'}
+          </Text>
+          <Text style={styles.previewTitle} numberOfLines={2}>
+            {title.trim() || 'Rooftop breakfast picnic'}
+          </Text>
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>Watermark</Text>
           <View style={styles.iconGrid}>
-            {ICON_CHOICES.map((emoji) => (
-              <Pressable
-                key={emoji}
-                accessibilityRole="button"
-                accessibilityLabel={`Use ${emoji} as the icon`}
-                accessibilityState={{ selected: icon === emoji }}
-                onPress={() => setIcon(emoji)}
-                style={[styles.iconChoice, icon === emoji && styles.iconChoiceActive]}
-              >
-                <Text style={styles.iconChoiceText}>{emoji}</Text>
-              </Pressable>
-            ))}
+            {WATERMARK_CHOICES.map((name) => {
+              const Drawing = ideaIcon(name);
+              const selected = icon === name;
+              return (
+                <Pressable
+                  key={name}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Use the ${name} drawing as the watermark`}
+                  accessibilityState={{ selected }}
+                  onPress={() => setIcon(name)}
+                  style={[styles.iconChoice, selected && styles.iconChoiceActive]}
+                >
+                  <Drawing size={20} color={selected ? previewHue : inkSoft} strokeWidth={1.6} />
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
@@ -247,36 +259,41 @@ const styles = StyleSheet.create({
     color: inkHead,
     marginTop: -10,
   },
-  iconSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
+  preview: {
     backgroundColor: surface,
     borderWidth: 1,
     borderColor: line,
     borderRadius: borders.radius,
-    padding: 16,
+    padding: 18,
+    gap: 7,
+    overflow: 'hidden', // crops the etching at the card edge
+  },
+  previewCategory: {
+    ...capsLabel,
+    fontSize: 10.5,
+  },
+  previewTitle: {
+    fontFamily: fonts.serif,
+    fontSize: 21,
+    lineHeight: 26,
+    color: inkHead,
   },
   iconGrid: {
-    flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 4,
   },
   iconChoice: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconChoiceActive: {
-    backgroundColor: iconWell,
     borderWidth: 1,
     borderColor: line,
-  },
-  iconChoiceText: {
-    fontSize: 17,
+    backgroundColor: 'rgba(0, 0, 0, 0.16)',
   },
   field: {
     gap: 9,

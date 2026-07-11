@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrewMeter } from '@/components/BrewMeter';
 import { DraggableIdeaCard } from '@/components/DraggableIdeaCard';
 import { IdeaDetailModal } from '@/components/IdeaDetailModal';
-import { playDealIn, playPickup, playThrowLock } from '@/lib/audio/soundEngine';
+import { playDealIn, playThrowLock } from '@/lib/audio/soundEngine';
 import { hapticThrow } from '@/lib/haptics';
 import { useSession } from '@/lib/store/session';
 import { accent, cardTilt, fonts, inkFaint, inkSoft } from '@/lib/theme';
@@ -60,7 +60,6 @@ export default function PickerScreen() {
 
   const inspect = (idea: Idea) => {
     if (resolving) return;
-    playPickup();
     setInspecting(idea);
   };
 

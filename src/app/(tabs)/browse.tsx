@@ -4,14 +4,13 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Chip } from '@/components/Chip';
-import { IconBox } from '@/components/IconBox';
 import { IdeaDetailModal } from '@/components/IdeaDetailModal';
+import { IdeaEtching } from '@/components/IdeaEtching';
 import { ScheduleSheet } from '@/components/ScheduleSheet';
 import { getAllIdeas } from '@/lib/db/database';
 import { hapticReveal } from '@/lib/haptics';
-import { iconEmoji } from '@/lib/icons';
 import { createMoment } from '@/lib/momentActions';
-import { accent, borders, capsLabel, fonts, ink, inkFaint, inkHead, inkSoft, line, surface } from '@/lib/theme';
+import { accent, borders, capsLabel, fonts, ideaHue, ink, inkFaint, inkHead, inkSoft, line, surface } from '@/lib/theme';
 import { ALL_MOODS, type CostTier, type Energy, type GroupType, type Idea, type Mood, type TimeOfDay } from '@/lib/types';
 
 const costOptions: { value: CostTier; label: string }[] = [
@@ -282,12 +281,12 @@ export default function BrowseScreen() {
             onPress={() => setInspecting(item)}
             style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
           >
-            <IconBox emoji={iconEmoji(item.icon)} size="s" />
+            <IdeaEtching icon={item.icon} hue={ideaHue(item.moods)} size={78} opacity={0.13} />
             <View style={styles.rowText}>
               <Text style={styles.rowTitle} numberOfLines={1}>
                 {item.title}
               </Text>
-              <Text style={styles.rowMeta}>
+              <Text style={[styles.rowMeta, { color: ideaHue(item.moods) }]}>
                 {item.moods[0]} · {durationLabel(item.durationMin)} ·{' '}
                 {item.costTier === 0 ? 'free' : '$'.repeat(item.costTier)}
                 {item.source === 'user' ? ' · yours' : ''}
@@ -459,7 +458,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: line,
     borderRadius: borders.radius,
-    padding: 13,
+    paddingVertical: 15,
+    paddingHorizontal: 15,
+    overflow: 'hidden', // crops the etching at the row edge
   },
   rowText: {
     flex: 1,

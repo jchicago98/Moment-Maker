@@ -6,9 +6,16 @@ See [CLAUDE.md](./CLAUDE.md) for the full product spec, design language, and bui
 
 ## Status
 
-**M1–M5 complete** ✅ · **UX revamp v2** ✅ · **Scheduling** ✅ · **Design v3 "Gazette · After Dark"** ✅
+**M1–M5 complete** ✅ · **UX revamp v2** ✅ · **Scheduling** ✅ · **Design v3 "Gazette · After Dark"** ✅ · **Idea etchings + journal notes** ✅
 
-Latest round (design v3, chosen from a mockup board of four directions):
+Latest round (idea etchings, chosen from a treatment mockup board):
+
+- **Idea etchings**: every idea carries its own ghosted thin-line drawing (a bike, a tent, a pancake stack — Lucide icons keyed off each idea's `icon` name), tinted in a per-mood editorial hue (`moodHue`), bleeding off the card corner like a watermark. Applied across picker, browse, detail modal, reveal, home, and journal; the mood hue also inks each idea's category line. No emoji anywhere; Add idea picks a watermark from a curated shelf with a live preview
+- **Silent drags**: no more ticks or pickup taps — the first sound a card makes is its throw-off. Deal-in, gift knocks, reveal chord, and the nocturne loops remain
+- **Journal**: entries show the date *and time* they happened, open into a sheet with editable stars, photo, and a written note "for future you," and can be removed (torn out) with confirmation
+- Fixed: home's pending-moment eyebrow was hardcoded "This evening" — it now derives from the schedule ("This morning", "Tonight", "Tomorrow", "For Saturday", or "Up next")
+
+Design v3 (previous round):
 
 - **Dark editorial restyle app-wide**: warm near-black ground (subtly tinted by the hour), cream serif headlines (Fraunces, bundled), hairline-bordered cards, one ember-red accent, small-caps labels, tabular numerals. Emoji demoted to small glyphs in dark wells on list rows; picker cards are text-only (category line · serif title · italic tip)
 - **Text-label tab bar** (Today · Ideas · Add · Journal · More) with an ember underline; the scrapbook is now the **Journal**

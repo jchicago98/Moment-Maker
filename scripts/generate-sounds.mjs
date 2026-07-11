@@ -114,7 +114,6 @@ PENTATONIC.forEach((freq, i) => {
   writeWav(`marimba-${String(i).padStart(2, '0')}.wav`, felt(freq));
 });
 
-writeWav('woodblock.wav', felt(110, 0.45, 0.5)); // pickup: low felt tap (A2)
 writeWav('knock.wav', woodblock(620)); // gift knocking from inside
 
 // Reveal resolution: a warm low felt-piano chord.

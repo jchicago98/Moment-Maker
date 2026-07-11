@@ -117,4 +117,5 @@ export interface Moment {
   confirmedAt?: string;
   rating?: 1 | 2 | 3 | 4 | 5;
   photoUri?: string;
+  note?: string; // the user's own words, for future them
 }
